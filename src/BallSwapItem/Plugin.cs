@@ -66,6 +66,7 @@ public partial class Plugin : BaseUnityPlugin
             false,
             "F9 gives the local player a Switcheroo, F10 forces a swap. Host only, for testing.");
 
+        MirrorSerializers.Register();
         new Harmony(Id).PatchAll();
         gameObject.AddComponent<ModRunner>();
 

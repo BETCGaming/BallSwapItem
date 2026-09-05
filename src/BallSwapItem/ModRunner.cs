@@ -20,6 +20,7 @@ internal sealed class ModRunner : MonoBehaviour
     private void Update()
     {
         SwitcherooNetwork.EnsureHandlers();
+        SwitcherooNetwork.TrackHeldItems();
         ModGate.Tick();
 
         if (!Plugin.DebugHotkeys.Value || Keyboard.current is null)

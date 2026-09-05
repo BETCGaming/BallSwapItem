@@ -67,6 +67,7 @@ internal static class SwitcherooNetwork
             serverHandlerRegistered = false;
             swapPending = false;
             LastRequestPerConnection.Clear();
+            LastHeldSwitcheroo.Clear();
             ModGate.Reset();
         }
 
@@ -173,17 +174,52 @@ internal static class SwitcherooNetwork
     }
 
     /// <summary>
-    /// The using client sends its request before decrementing the item, so the server's own
-    /// authoritative slot list still shows the Switcheroo when the request lands.
+    /// How long after a player last held a Switcheroo their request is still honoured. In host
+    /// mode Mirror queues local-connection messages and delivers them on a later network update,
+    /// by which time the item has already been consumed, so an exact "holds it right now" check
+    /// rejects the host's own perfectly legitimate use.
     /// </summary>
+    private const float HeldMemorySeconds = 5f;
+
+    private static readonly Dictionary<int, float> LastHeldSwitcheroo = new();
+
+    /// <summary>Polled on the server so recent holders are known before their request lands.</summary>
+    public static void TrackHeldItems()
+    {
+        if (!NetworkServer.active)
+        {
+            return;
+        }
+
+        float now = Time.time;
+        foreach (NetworkConnectionToClient conn in NetworkServer.connections.Values)
+        {
+            if (conn != null && HoldsSwitcheroo(conn))
+            {
+                LastHeldSwitcheroo[conn.connectionId] = now;
+            }
+        }
+    }
+
     private static bool SenderHoldsSwitcheroo(NetworkConnectionToClient conn)
+    {
+        if (HoldsSwitcheroo(conn))
+        {
+            return true;
+        }
+
+        return LastHeldSwitcheroo.TryGetValue(conn.connectionId, out float last)
+            && Time.time - last <= HeldMemorySeconds;
+    }
+
+    private static bool HoldsSwitcheroo(NetworkConnectionToClient conn)
     {
         if (conn.identity == null)
         {
             return false;
         }
 
-        PlayerInventory? inventory = conn.identity.GetComponentInChildren<PlayerInventory>();
+        PlayerInventory? inventory = conn.identity.GetComponent<PlayerInfo>()?.Inventory;
         if (inventory == null)
         {
             return false;
