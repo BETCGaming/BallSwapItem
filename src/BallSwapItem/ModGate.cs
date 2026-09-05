@@ -63,6 +63,14 @@ internal static class ModGate
                 continue;
             }
 
+            // The grace period starts at authentication, not at connection. A client cannot
+            // announce itself until the game's own authenticator has finished, so counting from
+            // first sight would kick players whose handshake is merely slow.
+            if (!conn.isAuthenticated)
+            {
+                continue;
+            }
+
             if (!FirstSeen.TryGetValue(conn.connectionId, out float seen))
             {
                 FirstSeen[conn.connectionId] = now;

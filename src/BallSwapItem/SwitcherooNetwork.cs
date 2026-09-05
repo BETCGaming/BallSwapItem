@@ -57,7 +57,12 @@ internal static class SwitcherooNetwork
             if (!serverHandlerRegistered)
             {
                 NetworkServer.RegisterHandler<SwitcherooRequestMessage>(OnServerRequest);
-                NetworkServer.RegisterHandler<SwitcherooHelloMessage>(OnServerHello);
+
+                // Registered without requiring authentication on purpose. Mirror disconnects a
+                // connection outright if it receives an auth-required message before the game's
+                // own authenticator has finished, so a hello that arrives a frame early must not
+                // be able to kick the very players who have the mod installed.
+                NetworkServer.RegisterHandler<SwitcherooHelloMessage>(OnServerHello, requireAuthentication: false);
                 serverHandlerRegistered = true;
                 Plugin.Log.LogInfo("Registered Switcheroo server handlers.");
             }
@@ -81,8 +86,9 @@ internal static class SwitcherooNetwork
                 Plugin.Log.LogInfo("Registered Switcheroo client handlers.");
             }
 
-            // Announce ourselves so the host knows this client has the mod.
-            if (!helloSent && NetworkClient.isConnected)
+            // Announce ourselves so the host knows this client has the mod, but only once the
+            // game's own authentication has completed.
+            if (!helloSent && NetworkClient.isConnected && NetworkClient.connection is { isAuthenticated: true })
             {
                 NetworkClient.Send(new SwitcherooHelloMessage());
                 helloSent = true;
