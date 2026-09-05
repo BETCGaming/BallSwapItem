@@ -1,35 +1,56 @@
-﻿using BepInEx;
+using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
+using HarmonyLib;
 
 namespace BallSwapItem;
 
-// Here are some basic resources on code style and naming conventions to help
-// you in your first CSharp plugin!
-// https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/coding-conventions
-// https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/coding-style/identifier-names
-// https://learn.microsoft.com/en-us/dotnet/standard/design-guidelines/names-of-namespaces
-
-// This BepInAutoPlugin attribute comes from the Hamunii.BepInEx.AutoPlugin
-// NuGet package, and it will generate the BepInPlugin attribute for you!
-// For more info, see https://github.com/Hamunii/BepInEx.AutoPlugin
 [BepInAutoPlugin]
 public partial class Plugin : BaseUnityPlugin
 {
     internal static ManualLogSource Log { get; private set; } = null!;
 
+    internal static ConfigEntry<bool> Enabled { get; private set; } = null!;
+    internal static ConfigEntry<float> WindUpSeconds { get; private set; } = null!;
+    internal static ConfigEntry<float> SoundVolume { get; private set; } = null!;
+    internal static ConfigEntry<bool> DebugHotkeys { get; private set; } = null!;
+
     private void Awake()
     {
-        // BepInEx gives us a logger which we can use to log information.
-        // See https://lethal.wiki/dev/fundamentals/logging
         Log = Logger;
 
-        // BepInEx also gives us a config file for easy configuration.
-        // See https://lethal.wiki/dev/intermediate/custom-configs
+        Enabled = Config.Bind(
+            "General",
+            "Enabled",
+            true,
+            "Enable the Switcheroo item. When off, the item is not registered and never spawns.");
 
-        // We can apply our hooks here.
-        // See https://lethal.wiki/dev/fundamentals/patching-code
+        WindUpSeconds = Config.Bind(
+            "General",
+            "WindUpSeconds",
+            3f,
+            new ConfigDescription(
+                "Seconds between using the Switcheroo and the swap landing.",
+                new AcceptableValueRange<float>(0f, 10f)));
 
-        // Log our awake here so we can see it in LogOutput.log file
-        Log.LogInfo($"Plugin {Name} is loaded!");
+        SoundVolume = Config.Bind(
+            "General",
+            "SoundVolume",
+            0.8f,
+            new ConfigDescription(
+                "Volume of the sound played once a swap resolves. This plays outside the game's "
+                + "FMOD mix, so the in-game volume sliders do not affect it.",
+                new AcceptableValueRange<float>(0f, 1f)));
+
+        DebugHotkeys = Config.Bind(
+            "Debug",
+            "DebugHotkeys",
+            false,
+            "F9 gives the local player a Switcheroo, F10 forces a swap. Host only, for testing.");
+
+        new Harmony(Id).PatchAll();
+        gameObject.AddComponent<ModRunner>();
+
+        Log.LogInfo($"Plugin {Name} v{Version} is loaded!");
     }
 }

@@ -10,6 +10,12 @@
     <Version>0.1.0</Version>
   </PropertyGroup>
 
+  <!-- Assets shipped inside the DLL so the plugin is a single self-contained file -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/switcheroo-icon.png" LogicalName="BallSwapItem.Assets.switcheroo-icon.png" />
+    <EmbeddedResource Include="Assets/bomboclat.mp3" LogicalName="BallSwapItem.Assets.bomboclat.mp3" />
+  </ItemGroup>
+
   <!-- Mod files to copy to the relative BepInEx directory after build -->
   <ItemGroup>
     <!-- TargetPath is the dll file produced during build. -->
