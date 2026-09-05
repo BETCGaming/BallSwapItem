@@ -10,11 +10,17 @@ namespace BallSwapItem;
 /// </summary>
 internal sealed class ModRunner : MonoBehaviour
 {
+    /// <summary>Lets the network layer start coroutines from its static message handlers.</summary>
+    internal static ModRunner? Instance { get; private set; }
+
+    private void Awake() => Instance = this;
+
     private void Start() => SwitcherooAudio.Load();
 
     private void Update()
     {
         SwitcherooNetwork.EnsureHandlers();
+        ModGate.Tick();
 
         if (!Plugin.DebugHotkeys.Value || Keyboard.current is null)
         {

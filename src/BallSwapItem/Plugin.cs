@@ -12,6 +12,8 @@ public partial class Plugin : BaseUnityPlugin
 
     internal static ConfigEntry<bool> Enabled { get; private set; } = null!;
     internal static ConfigEntry<float> WindUpSeconds { get; private set; } = null!;
+    internal static ConfigEntry<float> SpawnRarity { get; private set; } = null!;
+    internal static ConfigEntry<bool> BlockUnmodded { get; private set; } = null!;
     internal static ConfigEntry<float> SoundVolume { get; private set; } = null!;
     internal static ConfigEntry<bool> DebugHotkeys { get; private set; } = null!;
 
@@ -32,6 +34,22 @@ public partial class Plugin : BaseUnityPlugin
             new ConfigDescription(
                 "Seconds between using the Switcheroo and the swap landing.",
                 new AcceptableValueRange<float>(0f, 10f)));
+
+        SpawnRarity = Config.Bind(
+            "General",
+            "SpawnRarity",
+            0.35f,
+            new ConfigDescription(
+                "How common the Switcheroo is, relative to the average item in the same pool. "
+                + "1 makes it as common as a typical item; 0.35 makes it noticeably rarer.",
+                new AcceptableValueRange<float>(0.05f, 3f)));
+
+        BlockUnmodded = Config.Bind(
+            "Host",
+            "BlockUnmodded",
+            true,
+            "Disconnect players who do not have this mod installed. They cannot handle the "
+            + "Switcheroo if the host hands them one. Host setting; ignored on clients.");
 
         SoundVolume = Config.Bind(
             "General",

@@ -1,24 +1,38 @@
+using System.Collections;
 using System.Collections.Generic;
 using Mirror;
 using UnityEngine;
 
 namespace BallSwapItem;
 
-/// <summary>Client to server: "I used a Switcheroo, run the swap."</summary>
+/// <summary>Client to server: "I used a Switcheroo."</summary>
 internal struct SwitcherooRequestMessage : NetworkMessage
 {
 }
 
-/// <summary>Server to every client: the swap happened, play the payoff.</summary>
+/// <summary>Client to server on connect: "I have the mod installed."</summary>
+internal struct SwitcherooHelloMessage : NetworkMessage
+{
+}
+
+/// <summary>Server to every client: a swap is coming, start the countdown.</summary>
+internal struct SwitcherooArmedMessage : NetworkMessage
+{
+    public float WindUpSeconds;
+}
+
+/// <summary>Server to every client: the swap landed, play the payoff.</summary>
 internal struct SwitcherooResultMessage : NetworkMessage
 {
-    public uint InitiatorNetId;
     public int SwappedCount;
 }
 
 /// <summary>
 /// Mirror's [Command] and [ClientRpc] attributes need the Mirror weaver, which a BepInEx mod
 /// cannot run, so the item talks to the host with plain registered messages instead.
+///
+/// The wind-up is timed on the server rather than on the using client, so every player gets the
+/// same countdown and the same warning rather than only the person who pressed the button.
 /// </summary>
 internal static class SwitcherooNetwork
 {
@@ -29,6 +43,8 @@ internal static class SwitcherooNetwork
 
     private static bool serverHandlerRegistered;
     private static bool clientHandlerRegistered;
+    private static bool helloSent;
+    private static bool swapPending;
 
     /// <summary>
     /// Mirror drops registered handlers when a server or client shuts down, so handler state is
@@ -41,32 +57,44 @@ internal static class SwitcherooNetwork
             if (!serverHandlerRegistered)
             {
                 NetworkServer.RegisterHandler<SwitcherooRequestMessage>(OnServerRequest);
+                NetworkServer.RegisterHandler<SwitcherooHelloMessage>(OnServerHello);
                 serverHandlerRegistered = true;
-                Plugin.Log.LogInfo("Registered Switcheroo server handler.");
+                Plugin.Log.LogInfo("Registered Switcheroo server handlers.");
             }
         }
         else if (serverHandlerRegistered)
         {
             serverHandlerRegistered = false;
+            swapPending = false;
             LastRequestPerConnection.Clear();
+            ModGate.Reset();
         }
 
         if (NetworkClient.active)
         {
             if (!clientHandlerRegistered)
             {
+                NetworkClient.RegisterHandler<SwitcherooArmedMessage>(OnClientArmed);
                 NetworkClient.RegisterHandler<SwitcherooResultMessage>(OnClientResult);
                 clientHandlerRegistered = true;
-                Plugin.Log.LogInfo("Registered Switcheroo client handler.");
+                Plugin.Log.LogInfo("Registered Switcheroo client handlers.");
+            }
+
+            // Announce ourselves so the host knows this client has the mod.
+            if (!helloSent && NetworkClient.isConnected)
+            {
+                NetworkClient.Send(new SwitcherooHelloMessage());
+                helloSent = true;
             }
         }
-        else if (clientHandlerRegistered)
+        else
         {
             clientHandlerRegistered = false;
+            helloSent = false;
         }
     }
 
-    /// <summary>Called on the client that used the item, once the wind-up has elapsed.</summary>
+    /// <summary>Called on the client that used the item.</summary>
     public static void RequestSwap()
     {
         if (!NetworkClient.active)
@@ -77,6 +105,9 @@ internal static class SwitcherooNetwork
 
         NetworkClient.Send(new SwitcherooRequestMessage());
     }
+
+    private static void OnServerHello(NetworkConnectionToClient conn, SwitcherooHelloMessage message)
+        => ModGate.MarkModded(conn);
 
     private static void OnServerRequest(NetworkConnectionToClient conn, SwitcherooRequestMessage message)
     {
@@ -95,30 +126,54 @@ internal static class SwitcherooNetwork
 
         LastRequestPerConnection[conn.connectionId] = now;
 
+        if (swapPending)
+        {
+            Plugin.Log.LogInfo("Switcheroo request ignored: a swap is already counting down.");
+            return;
+        }
+
         if (!SenderHoldsSwitcheroo(conn))
         {
-            Plugin.Log.LogWarning($"Ignoring Switcheroo request from connection {conn.connectionId}: no Switcheroo in their inventory.");
+            Plugin.Log.LogWarning(
+                $"Ignoring Switcheroo request from connection {conn.connectionId}: no Switcheroo in their inventory.");
             return;
+        }
+
+        ModRunner.Instance?.StartCoroutine(RunSwap());
+    }
+
+    private static IEnumerator RunSwap()
+    {
+        swapPending = true;
+
+        float windUp = Mathf.Max(0f, Plugin.WindUpSeconds.Value);
+        NetworkServer.SendToAll(new SwitcherooArmedMessage { WindUpSeconds = windUp });
+
+        yield return new WaitForSeconds(windUp);
+
+        // The server can stop being the server mid-countdown, e.g. the host leaves.
+        if (!NetworkServer.active)
+        {
+            swapPending = false;
+            yield break;
         }
 
         int swapped = SwapService.TrySwap(out string failureReason);
         if (swapped == 0)
         {
             Plugin.Log.LogInfo($"Switcheroo used but no swap ran: {failureReason}.");
-            return;
+        }
+        else
+        {
+            Plugin.Log.LogInfo($"Switcheroo swapped {swapped} balls.");
+            NetworkServer.SendToAll(new SwitcherooResultMessage { SwappedCount = swapped });
         }
 
-        Plugin.Log.LogInfo($"Switcheroo swapped {swapped} balls.");
-
-        NetworkServer.SendToAll(new SwitcherooResultMessage
-        {
-            InitiatorNetId = conn.identity == null ? 0u : conn.identity.netId,
-            SwappedCount = swapped,
-        });
+        swapPending = false;
     }
 
     /// <summary>
-    /// The using client sends this request before decrementing the item, so the server's own
+    /// The using client sends its request before decrementing the item, so the server's own
     /// authoritative slot list still shows the Switcheroo when the request lands.
     /// </summary>
     private static bool SenderHoldsSwitcheroo(NetworkConnectionToClient conn)
@@ -143,6 +198,12 @@ internal static class SwitcherooNetwork
         }
 
         return false;
+    }
+
+    private static void OnClientArmed(SwitcherooArmedMessage message)
+    {
+        SwitcherooUi.BeginCountdown(message.WindUpSeconds);
+        SwitcherooAudio.PlayAnticipation();
     }
 
     private static void OnClientResult(SwitcherooResultMessage message)

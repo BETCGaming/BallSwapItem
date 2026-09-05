@@ -24,6 +24,22 @@ internal static class SwitcherooAudio
 
     public static void Load() => EnsureSound();
 
+    /// <summary>
+    /// The wind-up cue, borrowed from the Orbital Laser the device is built from. Plays on every
+    /// client so the whole lobby hears a swap coming, not just whoever used the item.
+    /// </summary>
+    public static void PlayAnticipation()
+    {
+        try
+        {
+            RuntimeManager.PlayOneShot(GameManager.AudioSettings.OrbitalLaserAnticipationEvent);
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"Could not play the wind-up cue: {e.Message}");
+        }
+    }
+
     public static void PlayPayoff()
     {
         if (!EnsureSound())

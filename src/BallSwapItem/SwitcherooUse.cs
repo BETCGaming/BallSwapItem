@@ -59,11 +59,12 @@ internal static class SwitcherooUsePatch
     {
         inventory.SetCurrentItemUse(ItemUseType.Regular);
 
-        SwitcherooUi.BeginCountdown(Plugin.WindUpSeconds.Value);
-        yield return new WaitForSeconds(Plugin.WindUpSeconds.Value);
+        // Hold the activation pose, borrowed from the Orbital Laser this device is built from.
+        yield return new WaitForSeconds(GameManager.ItemSettings.OrbitalLaserActivationTime);
 
         // Ask before consuming: the server validates against its own slot list, which still
-        // holds the Switcheroo until the decrement command behind us lands.
+        // holds the Switcheroo until the decrement command behind us lands. The wind-up and
+        // countdown are then timed by the server so every player sees the same warning.
         SwitcherooNetwork.RequestSwap();
 
         int index = inventory.EquippedItemIndex;
