@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.1.2
+
+Not published; a test build.
+
+### Added
+
+- A hot pink device in the player's hands. Held models come from EquipmentType rather than
+  ItemData.Prefab, which the item had no entry for, so the hands were empty.
+
+### Changed
+
+- The countdown now uses the game's own font with a white to #FFFCD4 vertical gradient and a
+  black outline, drawn with TextMeshPro instead of IMGUI.
+- Package and inventory art switched to the glowing icon.
+
+### Fixed
+
+- Dropped Switcheroos appear on the ground. The pickup template was deactivated and Instantiate
+  copies activeSelf, so every dropped copy spawned invisible.
+- Dropped Switcheroos look the same to everyone. The pickup inherited the Orbital Laser's network
+  asset id, so other players' clients would have built the game's grey laser instead.
+
 ## 0.1.1
 
 Not published; a test build, versioned so host and client can be told apart at a glance.
