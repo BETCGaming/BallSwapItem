@@ -14,7 +14,9 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> WindUpSeconds { get; private set; } = null!;
     internal static ConfigEntry<float> SpawnRarity { get; private set; } = null!;
     internal static ConfigEntry<float> SpawnChanceOverride { get; private set; } = null!;
+    internal static ConfigEntry<float> HeldPitchDegrees { get; private set; } = null!;
     internal static ConfigEntry<float> HeldYawDegrees { get; private set; } = null!;
+    internal static ConfigEntry<float> HeldRollDegrees { get; private set; } = null!;
     internal static ConfigEntry<bool> BlockUnmodded { get; private set; } = null!;
     internal static ConfigEntry<float> SoundVolume { get; private set; } = null!;
     internal static ConfigEntry<bool> DebugHotkeys { get; private set; } = null!;
@@ -56,13 +58,28 @@ public partial class Plugin : BaseUnityPlugin
                 + "testing; leave at 0 for normal play.",
                 new AcceptableValueRange<float>(0f, 0.95f)));
 
+        HeldPitchDegrees = Config.Bind(
+            "General",
+            "HeldPitchDegrees",
+            0f,
+            new ConfigDescription(
+                "Extra rotation of the device in the player's hands, around the sideways axis.",
+                new AcceptableValueRange<float>(-180f, 180f)));
+
         HeldYawDegrees = Config.Bind(
             "General",
             "HeldYawDegrees",
-            180f,
+            0f,
             new ConfigDescription(
-                "Rotation of the device in the player's hands, in degrees around the vertical "
-                + "axis. 180 turns the antenna away from the player.",
+                "Extra rotation of the device in the player's hands, around the vertical axis.",
+                new AcceptableValueRange<float>(-180f, 180f)));
+
+        HeldRollDegrees = Config.Bind(
+            "General",
+            "HeldRollDegrees",
+            0f,
+            new ConfigDescription(
+                "Extra rotation of the device in the player's hands, around the forward axis.",
                 new AcceptableValueRange<float>(-180f, 180f)));
 
         BlockUnmodded = Config.Bind(
@@ -88,6 +105,7 @@ public partial class Plugin : BaseUnityPlugin
             "F9 gives the local player a Switcheroo, F10 forces a swap. Host only, for testing.");
 
         MirrorSerializers.Register();
+        SwitcherooLocalization.Initialize();
         new Harmony(Id).PatchAll();
         gameObject.AddComponent<ModRunner>();
 

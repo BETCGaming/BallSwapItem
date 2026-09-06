@@ -76,28 +76,6 @@ internal static class SwitcherooEquipment
         }
     }
 
-    /// <summary>
-    /// Turns the device in the player's hand so the antenna points away from them.
-    ///
-    /// Applied to the model underneath the root rather than the root itself: EquipmentSwitcher
-    /// resets the attached object to Quaternion.identity when it parents it to the hand, so any
-    /// rotation on the root is discarded.
-    /// </summary>
-    private static void ApplyHeldRotation(GameObject clone)
-    {
-        float yaw = Plugin.HeldYawDegrees.Value;
-        if (Mathf.Approximately(yaw, 0f))
-        {
-            return;
-        }
-
-        Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
-        foreach (Transform child in clone.transform)
-        {
-            child.localRotation = turn * child.localRotation;
-        }
-    }
-
     private static EquipmentSettings? Build(EquipmentCollection collection)
     {
         if (!collection.TryGetEquipmentSettings(EquipmentType.OrbitalLaser, out EquipmentSettings donor)
@@ -123,14 +101,33 @@ internal static class SwitcherooEquipment
             donorObject.SetActive(wasActive);
         }
 
-        clone.name = "SwitcherooEquipment";
-        UnityEngine.Object.DontDestroyOnLoad(clone);
+        clone.name = "SwitcherooModel";
         Switcheroo.Recolour(clone);
 
-        ApplyHeldRotation(clone);
+        // The model hangs off a wrapper rather than being the root itself. EquipmentSwitcher
+        // resets whatever it attaches to Quaternion.identity, so a rotation on the root would be
+        // discarded; on the wrapper's child it survives. Rotating the root's children directly
+        // does not work either, since the model's renderers may sit on the root.
+        GameObject root = new("SwitcherooEquipment");
+        root.SetActive(false);
+        UnityEngine.Object.DontDestroyOnLoad(root);
 
-        Equipment equipment = clone.GetComponent<Equipment>();
+        clone.transform.SetParent(root.transform, worldPositionStays: false);
+        clone.transform.localPosition = Vector3.zero;
+        clone.transform.localRotation = Quaternion.Euler(
+            Plugin.HeldPitchDegrees.Value,
+            Plugin.HeldYawDegrees.Value,
+            Plugin.HeldRollDegrees.Value);
+
+        Equipment equipment = root.AddComponent<Equipment>();
         equipment.Type = Type;
+
+        // Keep the inner copy consistent so anything resolving Equipment through the children
+        // sees our type rather than the Orbital Laser's.
+        if (clone.TryGetComponent(out Equipment inner))
+        {
+            inner.Type = Type;
+        }
 
         EquipmentSettings built = new();
         built.Type = Type;

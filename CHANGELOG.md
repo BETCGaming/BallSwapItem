@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.4
+
+Not published; a test build.
+
+### Added
+
+- The Orbital Laser's hold and button-press animations. The animator picks animations from an
+  "Equipped item" integer set to the ItemType, and ours matched no state, so the device had no
+  use animation and sat in the default pose.
+- HeldPitchDegrees and HeldRollDegrees alongside HeldYawDegrees, for trimming how the device
+  sits in the hand. All default to none now that the animator supplies the pose.
+
+### Fixed
+
+- The item is named "Switcheroo" instead of showing "Data/ITEM_200". Names are looked up in the
+  Data string table under ITEM_<type>, which had no entry for a modded item, so Unity
+  Localization printed the table and key instead. The entry is added at runtime, which fixes
+  every place the name appears rather than one piece of UI at a time.
+
 ## 0.1.3
 
 Not published; a test build.
