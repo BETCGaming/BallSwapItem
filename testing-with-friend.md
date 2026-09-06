@@ -9,7 +9,7 @@ client — an unmodded client gets disconnected on purpose (see [Troubleshooting
 ## What to send
 
 ```
-artifacts/thunderstore/BETCGaming-BallSwapItem-0.1.5.zip
+artifacts/thunderstore/BETCGaming-BallSwapItem-0.1.6.zip
 ```
 
 Rebuild it before sending if you have changed any code since:
@@ -57,7 +57,7 @@ To uninstall, delete those four items from the game root.
 Open `.../Super Battle Golf/BepInEx/LogOutput.log` and look for:
 
 ```
-[Info   :BallSwapItem] Plugin BallSwapItem v0.1.5 is loaded!
+[Info   :BallSwapItem] Plugin BallSwapItem v0.1.6 is loaded!
 [Info   :BallSwapItem] Built Switcheroo item data as ItemType 200.
 [Info   :BallSwapItem] Swap sound ready.
 ```

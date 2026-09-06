@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.6
+
+Not published; a test build.
+
+### Fixed
+
+- The device is visible in the player's hand again. Moving the model under a wrapper object in
+  0.1.4 left the model itself deactivated: EquipmentManager activates the object it instantiates,
+  which is now the wrapper, so the model underneath stayed hidden.
+- The lobby's rules screen no longer throws. It maps an item to its slider by indexing an array
+  sized to the game's own item list, so a modded item indexed past the end and aborted
+  MatchSetupRules.Initialize partway through, before it pushed the rules out to clients. The
+  Switcheroo is now skipped by that notification; it has no slider, and its spawn weight lives
+  in the item pool the spawner actually draws from.
+
 ## 0.1.5
 
 Not published; a test build.

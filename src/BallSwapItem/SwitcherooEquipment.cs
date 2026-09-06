@@ -113,6 +113,12 @@ internal static class SwitcherooEquipment
         UnityEngine.Object.DontDestroyOnLoad(root);
 
         clone.transform.SetParent(root.transform, worldPositionStays: false);
+
+        // The clone was made while the donor prefab was switched off, so it is inactive.
+        // EquipmentManager activates the object it instantiates, which is now the wrapper, so
+        // without this the model underneath stays hidden and the hand appears empty.
+        clone.SetActive(true);
+
         clone.transform.localPosition = Vector3.zero;
         clone.transform.localRotation = Quaternion.Euler(
             Plugin.HeldPitchDegrees.Value,

@@ -79,6 +79,22 @@ internal static class SwitcherooPool
     }
 }
 
+/// <summary>
+/// Keeps the Switcheroo out of the lobby's spawn-chance sliders.
+///
+/// That UI maps an item to its slider with itemOrderLookup[(int)itemType - 1], an array sized to
+/// the game's own item list. Our type indexes far past the end and throws, which aborted
+/// MatchSetupRules.Initialize partway through — before it pushed the rules to clients. The item
+/// has no slider to update, so the whole notification is skipped for it; its weight lives in the
+/// pool itself, which is what the spawner actually draws from.
+/// </summary>
+[HarmonyPatch(typeof(MatchSetupRules), "OnSpawnChanceWeightsChangedInItemPool")]
+internal static class MatchSetupRulesSpawnChancePatch
+{
+    private static bool Prefix(MatchSetupRules.ItemPoolId itemPoolId)
+        => itemPoolId.itemType != Switcheroo.Type;
+}
+
 [HarmonyPatch(typeof(ItemSpawnerSettings), nameof(ItemSpawnerSettings.ResetRuntimeData))]
 internal static class ItemSpawnerSettingsResetPatch
 {
