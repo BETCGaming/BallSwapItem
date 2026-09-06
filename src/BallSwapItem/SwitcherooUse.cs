@@ -78,6 +78,26 @@ internal static class SwitcherooUsePatch
 
         int index = inventory.EquippedItemIndex;
         inventory.DecrementUseFromSlotAt(index);
+
+        // Hold the pose out for the full activation, tossing the spent device partway through,
+        // exactly as the Orbital Laser does. The timings come from the game's own settings so
+        // the throw lands on the same animation frame it was authored for.
+        bool thrown = false;
+        for (float elapsed = BMath.GetTimeSince(inventory.ItemUseTimestamp);
+             elapsed < GameManager.ItemSettings.OrbitalLaserActivationTotalDuration;
+             elapsed = BMath.GetTimeSince(inventory.ItemUseTimestamp))
+        {
+            if (!thrown && elapsed >= GameManager.ItemSettings.OrbitalLaserThrowTime)
+            {
+                SwitcherooThrownItem.EnsureRegistered();
+                inventory.ThrowUsedItemForAllClients(SwitcherooThrownItem.Type);
+                inventory.LocalPlayerMarkThrownItem(PlayerInventory.ThrownItemHand.Right);
+                thrown = true;
+            }
+
+            yield return null;
+        }
+
         inventory.SetCurrentItemUse(ItemUseType.None);
         inventory.RemoveIfOutOfUses(index, dueToFinishedItemUse: true);
     }

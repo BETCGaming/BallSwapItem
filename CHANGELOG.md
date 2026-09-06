@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.8
+
+Not published; a test build.
+
+### Added
+
+- The player now throws the spent device away after pressing its button, using the Orbital
+  Laser's own throw timing and total activation length so the toss lands on the animation frame
+  it was authored for.
+- The discarded device is hot pink like the one that was held. The game throws a separate
+  short-lived model keyed by its own type, so a custom one is registered rather than reusing the
+  grey Orbital Laser.
+
 ## 0.1.7
 
 Not published; a test build.

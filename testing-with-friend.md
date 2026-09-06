@@ -9,7 +9,7 @@ client — an unmodded client gets disconnected on purpose (see [Troubleshooting
 ## What to send
 
 ```
-artifacts/thunderstore/BETCGaming-BallSwapItem-0.1.7.zip
+artifacts/thunderstore/BETCGaming-BallSwapItem-0.1.8.zip
 ```
 
 Rebuild it before sending if you have changed any code since:
@@ -57,7 +57,7 @@ To uninstall, delete those four items from the game root.
 Open `.../Super Battle Golf/BepInEx/LogOutput.log` and look for:
 
 ```
-[Info   :BallSwapItem] Plugin BallSwapItem v0.1.7 is loaded!
+[Info   :BallSwapItem] Plugin BallSwapItem v0.1.8 is loaded!
 [Info   :BallSwapItem] Built Switcheroo item data as ItemType 200.
 [Info   :BallSwapItem] Swap sound ready.
 ```
@@ -81,6 +81,14 @@ DebugHotkeys = true
 
 Both are host-only and act on server state directly. Turn this off for normal play.
 
+## Open, not yet confirmed
+
+- [ ] **Held device orientation on the other player's screen.** It looked correct to the host but
+      upside down to the other player, because the rotation was read from each client's own
+      config and the two disagreed. Fixed in 0.1.7 by fixing the orientation in code, which also
+      neutralises the stale value left in older config files. **Both players need 0.1.7 or later,
+      and it has only been checked on one screen so far.**
+
 ## What to check
 
 The point of a second player is that most of this cannot be verified alone.
@@ -98,6 +106,8 @@ The point of a second player is that most of this cannot be verified alone.
 - [ ] A ball that goes out of bounds after a swap behaves exactly as in the base game: penalty
       stroke, ball returns over the owner's head and knocks them down.
 - [ ] A player who has already holed out is left out of the swap.
+- [ ] Using the item plays the press-the-button animation, then the player throws the spent
+      device away, and it is hot pink on both screens.
 
 The host's `LogOutput.log` records each swap:
 

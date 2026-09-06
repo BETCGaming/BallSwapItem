@@ -23,6 +23,7 @@ internal sealed class ModRunner : MonoBehaviour
         SwitcherooNetwork.TrackHeldItems();
         SwitcherooUi.Tick();
         SwitcherooLocalization.EnsureApplied();
+        SwitcherooThrownItem.EnsureRegistered();
         ModGate.Tick();
 
         if (!Plugin.DebugHotkeys.Value || Keyboard.current is null)
