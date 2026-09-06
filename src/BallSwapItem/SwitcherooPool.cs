@@ -1,113 +1,36 @@
-using System;
 using HarmonyLib;
+using UnityEngine;
 
 namespace BallSwapItem;
 
 /// <summary>
-/// Puts the Switcheroo into the item pools so it can be found in normal play.
+/// Decides when a spawned item is a Switcheroo.
 ///
-/// The game clones its pool assets into runtime copies on load (ItemSpawnerSettings
-/// .ResetRuntimeData), and every spawn draws from those copies, so injecting there leaves the
-/// shipped assets untouched. It also leaves the pool hash alone: that hash is built from the
-/// serialized defaults and exists to catch version mismatches between host and client.
+/// An earlier version added the item to each pool's spawn-chance array. That array is read in one
+/// place to actually pick an item, and in seven places by the lobby's rules screen — several of
+/// which map an item to its slider through an array sized to the game's own item list, and threw
+/// on a modded type. One of those runs every frame while the item-probability tab is open.
+///
+/// So the pools are left exactly as the game ships them, and the single draw point is intercepted
+/// instead. The lobby UI never sees the Switcheroo, the pool hashes stay untouched, and the item
+/// still turns up from crates and hand-outs, since both come through here.
 /// </summary>
-internal static class SwitcherooPool
+[HarmonyPatch(typeof(ItemPool), nameof(ItemPool.GetWeightedRandomItem))]
+internal static class ItemPoolDrawPatch
 {
-    public static void InjectAll(ItemSpawnerSettings settings)
+    private static bool Prefix(ref ItemType __result)
     {
         if (!Plugin.Enabled.Value)
         {
-            return;
+            return true;
         }
 
-        try
+        if (Random.value >= Mathf.Clamp01(Plugin.SpawnChance.Value))
         {
-            foreach (ItemSpawnerSettings.ItemPoolData data in settings.ItemPools)
-            {
-                Inject(data.pool);
-            }
+            return true;
+        }
 
-            Inject(settings.AheadOfBallItemPool);
-        }
-        catch (Exception e)
-        {
-            Plugin.Log.LogError($"Could not add the Switcheroo to the item pools: {e}");
-        }
+        __result = Switcheroo.Type;
+        return false;
     }
-
-    private static void Inject(ItemPool? pool)
-    {
-        if (pool == null || pool.ContainsItemType(Switcheroo.Type))
-        {
-            return;
-        }
-
-        ItemPool.ItemSpawnChance[] chances = pool.spawnChances;
-        if (chances.Length == 0)
-        {
-            return;
-        }
-
-        float total = 0f;
-        foreach (ItemPool.ItemSpawnChance chance in chances)
-        {
-            total += chance.spawnChanceWeight;
-        }
-
-        float share = Plugin.SpawnChanceOverride.Value;
-        float weight = share > 0f
-            // Solve for the weight that gives the Switcheroo this share of the pool:
-            // share = w / (total + w).
-            ? Math.Max(0.01f, total * share / (1f - share))
-            // Otherwise weight it against what else is in this pool, so the item stays rare
-            // whatever the game's own numbers are and whatever the host has tuned.
-            : Math.Max(0.01f, total / chances.Length * Plugin.SpawnRarity.Value);
-
-        Array.Resize(ref chances, chances.Length + 1);
-        chances[^1] = new ItemPool.ItemSpawnChance
-        {
-            item = Switcheroo.Type,
-            spawnChanceWeight = weight,
-        };
-
-        pool.spawnChances = chances;
-        pool.UpdateTotalWeight();
-
-        Plugin.Log.LogInfo(
-            $"Added the Switcheroo to pool '{pool.name}' at weight {weight:0.###} "
-            + $"({weight / (total + weight):P0} of that pool).");
-    }
-}
-
-/// <summary>
-/// Keeps the Switcheroo out of the lobby's spawn-chance sliders.
-///
-/// That UI maps an item to its slider with itemOrderLookup[(int)itemType - 1], an array sized to
-/// the game's own item list. Our type indexes far past the end and throws, which aborted
-/// MatchSetupRules.Initialize partway through — before it pushed the rules to clients. The item
-/// has no slider to update, so the whole notification is skipped for it; its weight lives in the
-/// pool itself, which is what the spawner actually draws from.
-/// </summary>
-[HarmonyPatch(typeof(MatchSetupRules), "OnSpawnChanceWeightsChangedInItemPool")]
-internal static class MatchSetupRulesSpawnChancePatch
-{
-    private static bool Prefix(MatchSetupRules.ItemPoolId itemPoolId)
-        => itemPoolId.itemType != Switcheroo.Type;
-}
-
-[HarmonyPatch(typeof(ItemSpawnerSettings), nameof(ItemSpawnerSettings.ResetRuntimeData))]
-internal static class ItemSpawnerSettingsResetPatch
-{
-    private static void Postfix(ItemSpawnerSettings __instance) => SwitcherooPool.InjectAll(__instance);
-}
-
-/// <summary>
-/// Belt and braces: the runtime pools are rebuilt at points we do not control, so make sure the
-/// Switcheroo is present at the one moment that actually matters — when an item is drawn.
-/// Injection is a no-op once the pool already contains it.
-/// </summary>
-[HarmonyPatch(typeof(ItemSpawnerSettings), nameof(ItemSpawnerSettings.GetRandomItemFor))]
-internal static class ItemSpawnerSettingsGetRandomPatch
-{
-    private static void Prefix(ItemSpawnerSettings __instance) => SwitcherooPool.InjectAll(__instance);
 }

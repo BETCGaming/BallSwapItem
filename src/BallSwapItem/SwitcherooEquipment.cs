@@ -120,10 +120,11 @@ internal static class SwitcherooEquipment
         clone.SetActive(true);
 
         clone.transform.localPosition = Vector3.zero;
-        clone.transform.localRotation = Quaternion.Euler(
-            Plugin.HeldPitchDegrees.Value,
-            Plugin.HeldYawDegrees.Value,
-            Plugin.HeldRollDegrees.Value);
+
+        // Deliberately not configurable. Every client builds its own copy of the held model, so
+        // a per-client setting means two players disagree about how the device is oriented in
+        // the same hand — which is exactly what a rotation config produced in testing.
+        clone.transform.localRotation = Quaternion.identity;
 
         Equipment equipment = root.AddComponent<Equipment>();
         equipment.Type = Type;

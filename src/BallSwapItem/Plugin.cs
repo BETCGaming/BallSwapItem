@@ -12,11 +12,7 @@ public partial class Plugin : BaseUnityPlugin
 
     internal static ConfigEntry<bool> Enabled { get; private set; } = null!;
     internal static ConfigEntry<float> WindUpSeconds { get; private set; } = null!;
-    internal static ConfigEntry<float> SpawnRarity { get; private set; } = null!;
-    internal static ConfigEntry<float> SpawnChanceOverride { get; private set; } = null!;
-    internal static ConfigEntry<float> HeldPitchDegrees { get; private set; } = null!;
-    internal static ConfigEntry<float> HeldYawDegrees { get; private set; } = null!;
-    internal static ConfigEntry<float> HeldRollDegrees { get; private set; } = null!;
+    internal static ConfigEntry<float> SpawnChance { get; private set; } = null!;
     internal static ConfigEntry<bool> OneSwitchPerRound { get; private set; } = null!;
     internal static ConfigEntry<bool> BlockUnmodded { get; private set; } = null!;
     internal static ConfigEntry<float> SoundVolume { get; private set; } = null!;
@@ -41,48 +37,14 @@ public partial class Plugin : BaseUnityPlugin
                 "Seconds between using the Switcheroo and the swap landing.",
                 new AcceptableValueRange<float>(0f, 10f)));
 
-        SpawnRarity = Config.Bind(
+        SpawnChance = Config.Bind(
             "General",
-            "SpawnRarity",
-            0.35f,
+            "SpawnChance",
+            0.07f,
             new ConfigDescription(
-                "How common the Switcheroo is, relative to the average item in the same pool. "
-                + "1 makes it as common as a typical item; 0.35 makes it noticeably rarer.",
-                new AcceptableValueRange<float>(0.05f, 3f)));
-
-        SpawnChanceOverride = Config.Bind(
-            "General",
-            "SpawnChanceOverride",
-            0f,
-            new ConfigDescription(
-                "Force the Switcheroo to this share of every item pool, ignoring SpawnRarity. "
-                + "0.8 means roughly four in five items spawned are Switcheroos. Intended for "
-                + "testing; leave at 0 for normal play.",
+                "Chance that any item the game hands out is a Switcheroo, from item crates and "
+                + "catch-up hand-outs alike. Host setting; item spawning is server side.",
                 new AcceptableValueRange<float>(0f, 0.95f)));
-
-        HeldPitchDegrees = Config.Bind(
-            "General",
-            "HeldPitchDegrees",
-            0f,
-            new ConfigDescription(
-                "Extra rotation of the device in the player's hands, around the sideways axis.",
-                new AcceptableValueRange<float>(-180f, 180f)));
-
-        HeldYawDegrees = Config.Bind(
-            "General",
-            "HeldYawDegrees",
-            0f,
-            new ConfigDescription(
-                "Extra rotation of the device in the player's hands, around the vertical axis.",
-                new AcceptableValueRange<float>(-180f, 180f)));
-
-        HeldRollDegrees = Config.Bind(
-            "General",
-            "HeldRollDegrees",
-            0f,
-            new ConfigDescription(
-                "Extra rotation of the device in the player's hands, around the forward axis.",
-                new AcceptableValueRange<float>(-180f, 180f)));
 
         OneSwitchPerRound = Config.Bind(
             "Host",

@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.1.7
+
+Not published; a test build.
+
+### Fixed
+
+- The device is no longer upside down for other players. Its rotation was read from each
+  client's own config, so two players applied different rotations to the same held object. The
+  orientation is now fixed in code, which also means a stale value in an existing config file
+  can no longer flip it.
+- The lobby's rules screen no longer throws. The Switcheroo is no longer added to the item
+  pools at all: that array is read once to pick an item and seven times by the rules screen,
+  several of which index an array sized to the game's own item list. One of those runs every
+  frame while the item-probability tab is open. The single draw point is intercepted instead,
+  leaving the pools exactly as the game ships them.
+
+### Changed
+
+- SpawnRarity and SpawnChanceOverride are replaced by a single SpawnChance, the probability that
+  any item handed out is a Switcheroo.
+- HeldPitchDegrees, HeldYawDegrees and HeldRollDegrees are removed, since a per-client setting
+  cannot drive something every player has to see the same way.
+
 ## 0.1.6
 
 Not published; a test build.
