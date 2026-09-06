@@ -61,6 +61,16 @@ internal static class SwapService
         return players;
     }
 
+    /// <summary>
+    /// How many balls a swap would actually move. Safe to call on a client: every check below
+    /// reads replicated state, except a ball already in the hole, which only the server tracks —
+    /// so a client may count one ball too many and the server stays the authority.
+    ///
+    /// In the driving range this is always zero, since the game registers no match participants
+    /// there at all.
+    /// </summary>
+    public static int CountEligible() => CollectEligiblePlayers().Count;
+
     private static List<PlayerGolfer> CollectEligiblePlayers()
     {
         List<PlayerGolfer> eligible = new();

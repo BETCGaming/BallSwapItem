@@ -200,6 +200,7 @@ internal static class SwitcherooNetwork
         }
 
         PlayerInfo? initiator = conn.identity == null ? null : conn.identity.GetComponent<PlayerInfo>();
+        Trace.Log($"server: request accepted from connection {conn.connectionId}");
         ModRunner.Instance?.StartCoroutine(RunSwap(initiator));
     }
 
@@ -207,14 +208,26 @@ internal static class SwitcherooNetwork
     {
         swapPending = true;
 
+        // Check before arming: a countdown for a swap that cannot happen is worse than none.
+        int eligible = SwapService.CountEligible();
+        if (eligible < 2)
+        {
+            Plugin.Log.LogInfo($"Switcheroo request refused: only {eligible} eligible ball(s) in play.");
+            swapPending = false;
+            yield break;
+        }
+
         float windUp = Mathf.Max(0f, Plugin.WindUpSeconds.Value);
         NetworkServer.SendToAll(new SwitcherooArmedMessage { WindUpSeconds = windUp });
 
+        Trace.Log($"server: armed, waiting {windUp:0.0}s");
         yield return new WaitForSeconds(windUp);
+        Trace.Log("server: wind-up elapsed");
 
         // The server can stop being the server mid-countdown, e.g. the host leaves.
         if (!NetworkServer.active)
         {
+            Plugin.Log.LogWarning("Swap abandoned: no longer the server when the wind-up elapsed.");
             swapPending = false;
             yield break;
         }

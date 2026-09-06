@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.9
+
+Not published; a test build.
+
+### Added
+
+- The Switcheroo refuses to fire unless at least two balls are actually in play. The player keeps
+  the item and gets the refusal sound with flashing "NO BALLS TO SWAP" text. This is what made
+  the item usable in the lobby's driving range, where the game registers no match participants at
+  all and there was never anything to swap.
+- The refusal notice now carries its own text, so it can explain which rule stopped the use.
+- VerboseLogging, which traces each step of a use and a swap. For diagnosing a stuck or repeating
+  use; off by default.
+
+### Changed
+
+- The server checks that a swap is possible before starting the countdown, rather than after, so
+  a countdown never plays for a swap that cannot happen.
+
 ## 0.1.8
 
 Not published; a test build.

@@ -18,6 +18,7 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> SoundVolume { get; private set; } = null!;
     internal static ConfigEntry<float> DenialVolume { get; private set; } = null!;
     internal static ConfigEntry<bool> DebugHotkeys { get; private set; } = null!;
+    internal static ConfigEntry<bool> VerboseLogging { get; private set; } = null!;
 
     private void Awake()
     {
@@ -86,6 +87,13 @@ public partial class Plugin : BaseUnityPlugin
 
         MirrorSerializers.Register();
         SwitcherooLocalization.Initialize();
+        VerboseLogging = Config.Bind(
+            "Debug",
+            "VerboseLogging",
+            false,
+            "Log every step of using the item and running a swap. For diagnosing a stuck or "
+            + "repeating use.");
+
         new Harmony(Id).PatchAll();
         gameObject.AddComponent<ModRunner>();
 

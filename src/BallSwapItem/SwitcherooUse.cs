@@ -35,8 +35,18 @@ internal static class SwitcherooUsePatch
         // Already spent this round: refuse without consuming the item, and say so.
         if (SwitcherooNetwork.LockedThisRound)
         {
-            SwitcherooUi.ShowDenial();
-            SwitcherooAudio.PlayDenial();
+            Refuse("ONCE PER ROUND");
+            __result = false;
+            return false;
+        }
+
+        // Nothing to swap: refuse rather than spend the item on an empty gesture. A swap needs
+        // two balls to trade, and there are none at all in the lobby's driving range.
+        int eligible = SwapService.CountEligible();
+        if (eligible < 2)
+        {
+            Trace.Log($"use refused: only {eligible} eligible ball(s)");
+            Refuse("NO BALLS TO SWAP");
             __result = false;
             return false;
         }
@@ -54,6 +64,8 @@ internal static class SwitcherooUsePatch
             return false;
         }
 
+        Trace.Log($"use accepted, currentItemUse={__instance.CurrentItemUse}, slot={__instance.EquippedItemIndex}");
+
         __instance.ItemUseTimestamp = Time.timeAsDouble;
         __instance.CancelItemUse();
         __instance.itemUseRoutine = __instance.StartCoroutine(SwitcherooRoutine(__instance));
@@ -64,8 +76,15 @@ internal static class SwitcherooUsePatch
         return false;
     }
 
+    private static void Refuse(string message)
+    {
+        SwitcherooUi.ShowDenial(message);
+        SwitcherooAudio.PlayDenial();
+    }
+
     private static IEnumerator SwitcherooRoutine(PlayerInventory inventory)
     {
+        Trace.Log("routine: started");
         inventory.SetCurrentItemUse(ItemUseType.Regular);
 
         // Hold the activation pose, borrowed from the Orbital Laser this device is built from.
@@ -74,6 +93,7 @@ internal static class SwitcherooUsePatch
         // Ask before consuming: the server validates against its own slot list, which still
         // holds the Switcheroo until the decrement command behind us lands. The wind-up and
         // countdown are then timed by the server so every player sees the same warning.
+        Trace.Log("routine: activation wait done, sending request");
         SwitcherooNetwork.RequestSwap();
 
         int index = inventory.EquippedItemIndex;
@@ -93,11 +113,13 @@ internal static class SwitcherooUsePatch
                 inventory.ThrowUsedItemForAllClients(SwitcherooThrownItem.Type);
                 inventory.LocalPlayerMarkThrownItem(PlayerInventory.ThrownItemHand.Right);
                 thrown = true;
+                Trace.Log($"routine: threw spent device at {elapsed:0.00}s");
             }
 
             yield return null;
         }
 
+        Trace.Log("routine: finished, clearing use state");
         inventory.SetCurrentItemUse(ItemUseType.None);
         inventory.RemoveIfOutOfUses(index, dueToFinishedItemUse: true);
     }

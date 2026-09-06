@@ -28,11 +28,16 @@ internal static class SwitcherooUi
     private static CanvasGroup? group;
     private static float countdownEndTime;
     private static float denialEndTime;
+    private static string denialText = string.Empty;
 
     public static void BeginCountdown(float seconds) => countdownEndTime = Time.time + seconds;
 
-    /// <summary>Shown when a use is refused because the swap is already spent this round.</summary>
-    public static void ShowDenial() => denialEndTime = Time.time + DenialSeconds;
+    /// <summary>Shown when a use is refused, explaining why.</summary>
+    public static void ShowDenial(string message)
+    {
+        denialText = message;
+        denialEndTime = Time.time + DenialSeconds;
+    }
 
     /// <summary>Driven every frame by <see cref="ModRunner"/>.</summary>
     public static void Tick()
@@ -70,6 +75,7 @@ internal static class SwitcherooUi
         if (denialRemaining > 0f)
         {
             denialLabel!.enabled = true;
+            denialLabel.text = denialText;
             // Square wave rather than a fade, so it reads as a flash rather than a pulse.
             bool on = Mathf.Repeat(denialRemaining * DenialFlashHz, 1f) > 0.5f;
             denialLabel.alpha = on ? 1f : 0.15f;
@@ -161,7 +167,6 @@ internal static class SwitcherooUi
         denial.alignment = TextAlignmentOptions.Center;
         denial.textWrappingMode = TextWrappingModes.NoWrap;
         denial.raycastTarget = false;
-        denial.text = "ONCE PER ROUND";
         denial.color = new Color32(0xFF, 0x3B, 0x30, 0xFF);
         denial.outlineWidth = 0.2f;
         denial.outlineColor = new Color32(0, 0, 0, 255);
