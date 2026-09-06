@@ -229,3 +229,4 @@ Config.Build.user.props
 
 # Reference material, not ours to redistribute
 exiira-BallSwap-*.png
+.env

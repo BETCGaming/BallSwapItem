@@ -2,11 +2,11 @@
 
 ### Logic
 
-- 1. Once per round config works
-- 2. If item is attempted a 2nd time in a round, there is a warning telling the player that the item has already been used in this round multiple swaps per round config works
+- 1. Once per round config works, should be a setting under Rules > any gamemode > Battle
+- 2. While once per round config is true, and if item is attempted a 2nd time in a round, there is a warning telling the player that the item has already been used in this round.
 - 3. 2 swaps at the same time should only allow first player item to be used. 2nd player item should get warning that one is in use right now.
 - 4. Lobby use should be disabled
-- 5. User who calls the switcheroo has a pop up in the top right corner to blame. might need the golf ball image with arrows for custom pop up
+- 5. User who calls the switcheroo has a pop up in the top right corner to blame.
 
 ### Cosmetic
 
@@ -19,3 +19,5 @@
 
 - 1. Edit percentage chance of finding item in boxes via UI
 - 2. Switcheroo Item Probability should also show on the screen (with all other items) when a user presses Escape
+- 3. The default percentage of the item appearing in each pool should match the default weight of the Thunderstorm.
+- 4. The Switcheroo should be in 5/6 item pools, excluding mobility.
