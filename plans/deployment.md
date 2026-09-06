@@ -1,9 +1,10 @@
 # Deploying BallSwapItem
 
-What is left to get this from a local test build onto Thunderstore. Everything here is
-outstanding; the build, packaging and Thunderstore metadata are already working.
+How this got from a local test build onto Thunderstore, kept as the procedure for the next
+release rather than a to-do list.
 
-Current state: **nothing pushed**, version **0.4.0**, never published.
+Current state: **published as 1.0.0** on 2026-09-06 and tagged `v1.0.0`; `main` is pushed. See
+[Publishing an update later](#publishing-an-update-later) for the next one.
 
 ## Before publishing
 
@@ -25,11 +26,8 @@ so far only appeared on the *other* player's screen:
 
 ### 2. Decide the version number
 
-`0.4.0` is set in `src/BallSwapItem/BallSwapItem.csproj`, but the changelog still marks every
-entry "Not published". Decide whether the first public release ships as `0.4.0` or `1.0.0`, then:
-
-- set `<Version>` in `src/BallSwapItem/BallSwapItem.csproj` if the number changes
-- retitle the top changelog section and drop the "Not published" line
+Settled: shipped as `1.0.0`. For the next release, set `<Version>` in
+`src/BallSwapItem/BallSwapItem.csproj` and retitle the top changelog section to match.
 
 ### 3. Settle the accepted caveats
 
@@ -94,7 +92,7 @@ publishing:
 ```powershell
 # Inspect what is actually in the package
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "artifacts\thunderstore\BETCGaming-BallSwapItem-0.4.0.zip"))
+$zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "artifacts\thunderstore\BETCGaming-BallSwapItem-1.0.0.zip"))
 $zip.Entries | Select-Object FullName, Length
 $zip.Dispose()
 ```
@@ -112,9 +110,14 @@ publishing:
 
 ```powershell
 dotnet tcli publish `
-  --file artifacts\thunderstore\BETCGaming-BallSwapItem-0.4.0.zip `
-  --token $env:TCLI_TOKEN
+  --config-path src\BallSwapItem\thunderstore.toml `
+  --file artifacts\thunderstore\BETCGaming-BallSwapItem-1.0.0.zip `
+  --token $token
 ```
+
+`--config-path` is required: `thunderstore.toml` lives in `src/BallSwapItem/`, while tcli looks for
+it in the working directory and exits if it is not there. The token is read from `.env`, which is
+gitignored and must stay that way.
 
 The template also wires publishing into the build via
 `dotnet build -c Release -property:PublishTS=true`, but that path does not pass a token, so the
@@ -128,8 +131,8 @@ explicit command above is the reliable one.
 - [ ] Tag the release so the source matches what shipped:
 
 ```sh
-git tag -a v0.4.0 -m "First Thunderstore release"
-git push origin v0.4.0
+git tag -a v1.0.0 -m "First Thunderstore release"
+git push origin v1.0.0
 ```
 
 - [ ] Tell the people who have been testing with a local zip to switch to the Thunderstore
@@ -154,7 +157,7 @@ Your machine's config still has testing values, in
 | `DebugHotkeys` | true | false |
 | `VerboseLogging` | true | false |
 
-`SpawnChance` was removed in 0.3.0 and `OneSwitchPerRound` in 0.4.0 — spawn rate is now the match
+`SpawnChance` was removed in 0.3.0 and `OneSwitchPerRound` in 1.0.0 — spawn rate is now the match
 setup slider, and the once-per-hole limit a Battle row. Old keys left in the file are ignored, so
 there is nothing to clean up.
 

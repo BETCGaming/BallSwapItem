@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.4.0
+## 1.0.0
 
-Not published; a test build.
+First public release. The sections below it are the pre-release test builds it was built from.
 
 ### Added
 
