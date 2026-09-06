@@ -48,15 +48,20 @@ internal static class SwitcherooPool
             return;
         }
 
-        // Weight relative to what else is in this pool, so the item stays rare whatever the
-        // game's own numbers are and whatever the host has tuned.
         float total = 0f;
         foreach (ItemPool.ItemSpawnChance chance in chances)
         {
             total += chance.spawnChanceWeight;
         }
 
-        float weight = Math.Max(0.01f, total / chances.Length * Plugin.SpawnRarity.Value);
+        float share = Plugin.SpawnChanceOverride.Value;
+        float weight = share > 0f
+            // Solve for the weight that gives the Switcheroo this share of the pool:
+            // share = w / (total + w).
+            ? Math.Max(0.01f, total * share / (1f - share))
+            // Otherwise weight it against what else is in this pool, so the item stays rare
+            // whatever the game's own numbers are and whatever the host has tuned.
+            : Math.Max(0.01f, total / chances.Length * Plugin.SpawnRarity.Value);
 
         Array.Resize(ref chances, chances.Length + 1);
         chances[^1] = new ItemPool.ItemSpawnChance
@@ -68,7 +73,9 @@ internal static class SwitcherooPool
         pool.spawnChances = chances;
         pool.UpdateTotalWeight();
 
-        Plugin.Log.LogInfo($"Added the Switcheroo to pool '{pool.name}' at weight {weight:0.###}.");
+        Plugin.Log.LogInfo(
+            $"Added the Switcheroo to pool '{pool.name}' at weight {weight:0.###} "
+            + $"({weight / (total + weight):P0} of that pool).");
     }
 }
 

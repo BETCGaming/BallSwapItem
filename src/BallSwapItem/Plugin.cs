@@ -13,6 +13,8 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<bool> Enabled { get; private set; } = null!;
     internal static ConfigEntry<float> WindUpSeconds { get; private set; } = null!;
     internal static ConfigEntry<float> SpawnRarity { get; private set; } = null!;
+    internal static ConfigEntry<float> SpawnChanceOverride { get; private set; } = null!;
+    internal static ConfigEntry<float> HeldYawDegrees { get; private set; } = null!;
     internal static ConfigEntry<bool> BlockUnmodded { get; private set; } = null!;
     internal static ConfigEntry<float> SoundVolume { get; private set; } = null!;
     internal static ConfigEntry<bool> DebugHotkeys { get; private set; } = null!;
@@ -43,6 +45,25 @@ public partial class Plugin : BaseUnityPlugin
                 "How common the Switcheroo is, relative to the average item in the same pool. "
                 + "1 makes it as common as a typical item; 0.35 makes it noticeably rarer.",
                 new AcceptableValueRange<float>(0.05f, 3f)));
+
+        SpawnChanceOverride = Config.Bind(
+            "General",
+            "SpawnChanceOverride",
+            0f,
+            new ConfigDescription(
+                "Force the Switcheroo to this share of every item pool, ignoring SpawnRarity. "
+                + "0.8 means roughly four in five items spawned are Switcheroos. Intended for "
+                + "testing; leave at 0 for normal play.",
+                new AcceptableValueRange<float>(0f, 0.95f)));
+
+        HeldYawDegrees = Config.Bind(
+            "General",
+            "HeldYawDegrees",
+            180f,
+            new ConfigDescription(
+                "Rotation of the device in the player's hands, in degrees around the vertical "
+                + "axis. 180 turns the antenna away from the player.",
+                new AcceptableValueRange<float>(-180f, 180f)));
 
         BlockUnmodded = Config.Bind(
             "Host",

@@ -152,6 +152,17 @@ internal static class Switcheroo
 
         prefab.name = "SwitcherooItem";
 
+        // The clone carries the donor's serialized item type, so picking a dropped Switcheroo
+        // back up would hand the player an actual Orbital Laser.
+        if (prefab.TryGetComponent(out PhysicalItem physical))
+        {
+            physical.itemType = Type;
+        }
+        else
+        {
+            Plugin.Log.LogWarning("Switcheroo pickup has no PhysicalItem component.");
+        }
+
         // A runtime template has to live in a scene, unlike a real prefab asset, so parking it
         // under a deactivated holder is what keeps it dormant. Leaving the template itself
         // inactive instead would make every dropped copy inherit activeSelf = false and spawn
@@ -192,6 +203,22 @@ internal static class Switcheroo
         NetworkClient.RegisterPrefab(prefab, NetworkAssetId);
 
         Plugin.Log.LogInfo($"Registered the Switcheroo pickup as network asset {identity.assetId}.");
+    }
+
+    /// <summary>
+    /// Mirror clears every registered prefab when a client shuts down, so a registration made at
+    /// startup is gone by the time the player joins a lobby and the dropped item silently fails
+    /// to spawn for them. Re-registering whenever the client starts keeps it available.
+    /// Registering the same prefab under the id it already holds is a no-op for Mirror.
+    /// </summary>
+    public static void EnsureNetworkPrefabRegistered()
+    {
+        if (itemData?.Prefab == null)
+        {
+            return;
+        }
+
+        NetworkClient.RegisterPrefab(itemData.Prefab, NetworkAssetId);
     }
 
     /// <summary>Tints every renderer on a cloned device hot pink.</summary>

@@ -76,6 +76,28 @@ internal static class SwitcherooEquipment
         }
     }
 
+    /// <summary>
+    /// Turns the device in the player's hand so the antenna points away from them.
+    ///
+    /// Applied to the model underneath the root rather than the root itself: EquipmentSwitcher
+    /// resets the attached object to Quaternion.identity when it parents it to the hand, so any
+    /// rotation on the root is discarded.
+    /// </summary>
+    private static void ApplyHeldRotation(GameObject clone)
+    {
+        float yaw = Plugin.HeldYawDegrees.Value;
+        if (Mathf.Approximately(yaw, 0f))
+        {
+            return;
+        }
+
+        Quaternion turn = Quaternion.Euler(0f, yaw, 0f);
+        foreach (Transform child in clone.transform)
+        {
+            child.localRotation = turn * child.localRotation;
+        }
+    }
+
     private static EquipmentSettings? Build(EquipmentCollection collection)
     {
         if (!collection.TryGetEquipmentSettings(EquipmentType.OrbitalLaser, out EquipmentSettings donor)
@@ -104,6 +126,8 @@ internal static class SwitcherooEquipment
         clone.name = "SwitcherooEquipment";
         UnityEngine.Object.DontDestroyOnLoad(clone);
         Switcheroo.Recolour(clone);
+
+        ApplyHeldRotation(clone);
 
         Equipment equipment = clone.GetComponent<Equipment>();
         equipment.Type = Type;

@@ -83,6 +83,7 @@ internal static class SwitcherooNetwork
                 NetworkClient.RegisterHandler<SwitcherooArmedMessage>(OnClientArmed);
                 NetworkClient.RegisterHandler<SwitcherooResultMessage>(OnClientResult);
                 clientHandlerRegistered = true;
+                Switcheroo.EnsureNetworkPrefabRegistered();
                 Plugin.Log.LogInfo("Registered Switcheroo client handlers.");
             }
 

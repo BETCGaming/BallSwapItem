@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.3
+
+Not published; a test build.
+
+### Added
+
+- SpawnChanceOverride, forcing the Switcheroo to a set share of every item pool. For testing;
+  leave at 0 for normal play.
+- HeldYawDegrees, rotating the device in the player's hands. Defaults to 180 so the antenna
+  points away from the player.
+
+### Fixed
+
+- Dropped Switcheroos are visible to other players. Mirror clears registered prefabs when a
+  client shuts down, so the registration made at startup was gone by the time anyone joined a
+  lobby, and their client had no prefab to build. It is now renewed each time the client starts.
+- Picking a dropped Switcheroo back up returns a Switcheroo. The pickup carried the Orbital
+  Laser's serialized item type, so it turned back into a laser in the player's hands.
+
 ## 0.1.2
 
 Not published; a test build.
