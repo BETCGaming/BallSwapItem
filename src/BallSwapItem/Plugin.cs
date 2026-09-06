@@ -17,8 +17,10 @@ public partial class Plugin : BaseUnityPlugin
     internal static ConfigEntry<float> HeldPitchDegrees { get; private set; } = null!;
     internal static ConfigEntry<float> HeldYawDegrees { get; private set; } = null!;
     internal static ConfigEntry<float> HeldRollDegrees { get; private set; } = null!;
+    internal static ConfigEntry<bool> OneSwitchPerRound { get; private set; } = null!;
     internal static ConfigEntry<bool> BlockUnmodded { get; private set; } = null!;
     internal static ConfigEntry<float> SoundVolume { get; private set; } = null!;
+    internal static ConfigEntry<float> DenialVolume { get; private set; } = null!;
     internal static ConfigEntry<bool> DebugHotkeys { get; private set; } = null!;
 
     private void Awake()
@@ -82,6 +84,13 @@ public partial class Plugin : BaseUnityPlugin
                 "Extra rotation of the device in the player's hands, around the forward axis.",
                 new AcceptableValueRange<float>(-180f, 180f)));
 
+        OneSwitchPerRound = Config.Bind(
+            "Host",
+            "OneSwitchPerRound",
+            false,
+            "Allow only one Switcheroo swap per hole. Further attempts are refused without "
+            + "consuming the item. Host setting; clients follow whatever the host runs.");
+
         BlockUnmodded = Config.Bind(
             "Host",
             "BlockUnmodded",
@@ -96,6 +105,15 @@ public partial class Plugin : BaseUnityPlugin
             new ConfigDescription(
                 "Volume of the sound played once a swap resolves. This plays outside the game's "
                 + "FMOD mix, so the in-game volume sliders do not affect it.",
+                new AcceptableValueRange<float>(0f, 1f)));
+
+        DenialVolume = Config.Bind(
+            "General",
+            "DenialVolume",
+            0.25f,
+            new ConfigDescription(
+                "Volume of the sound played when a Switcheroo use is refused because the swap "
+                + "has already been used this round.",
                 new AcceptableValueRange<float>(0f, 1f)));
 
         DebugHotkeys = Config.Bind(

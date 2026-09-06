@@ -32,6 +32,15 @@ internal static class SwitcherooUsePatch
             return true;
         }
 
+        // Already spent this round: refuse without consuming the item, and say so.
+        if (SwitcherooNetwork.LockedThisRound)
+        {
+            SwitcherooUi.ShowDenial();
+            SwitcherooAudio.PlayDenial();
+            __result = false;
+            return false;
+        }
+
         // Reuse the game's own gate so holstering, stuns, cooldowns and the rest still apply.
         if (!__instance.CanUseEquippedItem(
                 altUse: false,

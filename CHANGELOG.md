@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.5
+
+Not published; a test build.
+
+### Added
+
+- OneSwitchPerRound: allows a single swap per hole. A player using a Switcheroo after that keeps
+  the item and gets a quiet refusal sound with flashing "ONCE PER ROUND" text. The rule is
+  enforced by the host and clients follow it, so a mismatched client setting cannot bypass it.
+- The swap is announced in the game's own info feed, one line per player caught in it.
+- DenialVolume, for the refusal sound.
+
 ## 0.1.4
 
 Not published; a test build.

@@ -70,7 +70,7 @@ internal sealed class ModRunner : MonoBehaviour
             return;
         }
 
-        int swapped = SwapService.TrySwap(out string failureReason);
+        int swapped = SwapService.TrySwap(out string failureReason).Count;
         Plugin.Log.LogInfo(swapped > 0
             ? $"Swapped {swapped} balls."
             : $"Swap did not run: {failureReason}.");

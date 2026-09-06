@@ -31,6 +31,11 @@ internal static class MirrorSerializers
         Reader<SwitcherooResultMessage>.read =
             static reader => new SwitcherooResultMessage { SwappedCount = reader.Read<int>() };
 
+        Writer<SwitcherooLockMessage>.write =
+            static (writer, message) => writer.Write(message.Locked);
+        Reader<SwitcherooLockMessage>.read =
+            static reader => new SwitcherooLockMessage { Locked = reader.Read<bool>() };
+
         Plugin.Log.LogInfo("Registered Switcheroo message serializers.");
     }
 }

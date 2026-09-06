@@ -17,18 +17,30 @@ internal static class SwitcherooUi
     /// <summary>The warm off-white the text fades into.</summary>
     private static readonly Color32 GradientBottom = new(0xFF, 0xFC, 0xD4, 0xFF);
 
+    /// <summary>How long the refusal notice stays on screen.</summary>
+    private const float DenialSeconds = 1.6f;
+
+    /// <summary>Flashes per second while the refusal notice is showing.</summary>
+    private const float DenialFlashHz = 4f;
+
     private static TextMeshProUGUI? label;
+    private static TextMeshProUGUI? denialLabel;
     private static CanvasGroup? group;
     private static float countdownEndTime;
+    private static float denialEndTime;
 
     public static void BeginCountdown(float seconds) => countdownEndTime = Time.time + seconds;
+
+    /// <summary>Shown when a use is refused because the swap is already spent this round.</summary>
+    public static void ShowDenial() => denialEndTime = Time.time + DenialSeconds;
 
     /// <summary>Driven every frame by <see cref="ModRunner"/>.</summary>
     public static void Tick()
     {
-        float remaining = countdownEndTime - Time.time;
+        float countdownRemaining = countdownEndTime - Time.time;
+        float denialRemaining = denialEndTime - Time.time;
 
-        if (remaining <= 0f)
+        if (countdownRemaining <= 0f && denialRemaining <= 0f)
         {
             if (group != null && group.alpha != 0f)
             {
@@ -44,7 +56,28 @@ internal static class SwitcherooUi
         }
 
         group!.alpha = 1f;
-        label!.text = $"SWITCHEROO IN {Mathf.CeilToInt(remaining)}";
+
+        if (countdownRemaining > 0f)
+        {
+            label!.enabled = true;
+            label.text = $"SWITCHEROO IN {Mathf.CeilToInt(countdownRemaining)}";
+        }
+        else
+        {
+            label!.enabled = false;
+        }
+
+        if (denialRemaining > 0f)
+        {
+            denialLabel!.enabled = true;
+            // Square wave rather than a fade, so it reads as a flash rather than a pulse.
+            bool on = Mathf.Repeat(denialRemaining * DenialFlashHz, 1f) > 0.5f;
+            denialLabel.alpha = on ? 1f : 0.15f;
+        }
+        else
+        {
+            denialLabel!.enabled = false;
+        }
     }
 
     private static bool EnsureLabel()
@@ -111,8 +144,37 @@ internal static class SwitcherooUi
         rect.anchoredPosition = new Vector2(0f, -180f);
         rect.sizeDelta = new Vector2(1400f, 120f);
 
+        denialLabel = BuildDenialLabel(root, font);
+
         Plugin.Log.LogInfo($"Countdown label built using the game font '{font.name}'.");
         return true;
+    }
+
+    private static TextMeshProUGUI BuildDenialLabel(GameObject root, TMP_FontAsset font)
+    {
+        GameObject textObject = new("Denial");
+        textObject.transform.SetParent(root.transform, worldPositionStays: false);
+
+        TextMeshProUGUI denial = textObject.AddComponent<TextMeshProUGUI>();
+        denial.font = font;
+        denial.fontSize = 58f;
+        denial.alignment = TextAlignmentOptions.Center;
+        denial.textWrappingMode = TextWrappingModes.NoWrap;
+        denial.raycastTarget = false;
+        denial.text = "ONCE PER ROUND";
+        denial.color = new Color32(0xFF, 0x3B, 0x30, 0xFF);
+        denial.outlineWidth = 0.2f;
+        denial.outlineColor = new Color32(0, 0, 0, 255);
+        denial.enabled = false;
+
+        RectTransform rect = denial.rectTransform;
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = new Vector2(0f, -180f);
+        rect.sizeDelta = new Vector2(1400f, 120f);
+
+        return denial;
     }
 
     /// <summary>

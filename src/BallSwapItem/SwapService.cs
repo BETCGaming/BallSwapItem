@@ -25,22 +25,22 @@ internal static class SwapService
     /// <summary>
     /// Swaps every eligible player's ball so that no player keeps their own.
     /// </summary>
-    /// <returns>The number of players swapped, or 0 if the swap could not run.</returns>
-    public static int TrySwap(out string failureReason)
+    /// <returns>The players whose balls were swapped; empty if the swap could not run.</returns>
+    public static List<PlayerGolfer> TrySwap(out string failureReason)
     {
         failureReason = string.Empty;
 
         if (!NetworkServer.active)
         {
             failureReason = "swap attempted off the server";
-            return 0;
+            return new List<PlayerGolfer>();
         }
 
         List<PlayerGolfer> players = CollectEligiblePlayers();
         if (players.Count < 2)
         {
             failureReason = $"only {players.Count} eligible ball(s) in play";
-            return 0;
+            return new List<PlayerGolfer>();
         }
 
         GolfBall[] balls = new GolfBall[players.Count];
@@ -58,7 +58,7 @@ internal static class SwapService
             UpdateNameTag(balls[i]);
         }
 
-        return players.Count;
+        return players;
     }
 
     private static List<PlayerGolfer> CollectEligiblePlayers()

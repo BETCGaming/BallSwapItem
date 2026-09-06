@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Mirror;
@@ -28,6 +29,16 @@ internal struct SwitcherooResultMessage : NetworkMessage
 }
 
 /// <summary>
+/// Server to clients: whether the Switcheroo is spent for this hole. The rule lives on the
+/// host, so clients simply obey this rather than consulting their own config, which keeps a
+/// mismatched client setting from letting someone through.
+/// </summary>
+internal struct SwitcherooLockMessage : NetworkMessage
+{
+    public bool Locked;
+}
+
+/// <summary>
 /// Mirror's [Command] and [ClientRpc] attributes need the Mirror weaver, which a BepInEx mod
 /// cannot run, so the item talks to the host with plain registered messages instead.
 ///
@@ -41,6 +52,11 @@ internal static class SwitcherooNetwork
 
     private static readonly Dictionary<int, double> LastRequestPerConnection = new();
 
+    /// <summary>Set on clients from the host. False whenever the rule is off.</summary>
+    public static bool LockedThisRound { get; private set; }
+
+    private static bool serverLocked;
+    private static bool holeHookInstalled;
     private static bool serverHandlerRegistered;
     private static bool clientHandlerRegistered;
     private static bool helloSent;
@@ -71,6 +87,7 @@ internal static class SwitcherooNetwork
         {
             serverHandlerRegistered = false;
             swapPending = false;
+            serverLocked = false;
             LastRequestPerConnection.Clear();
             LastHeldSwitcheroo.Clear();
             ModGate.Reset();
@@ -82,6 +99,7 @@ internal static class SwitcherooNetwork
             {
                 NetworkClient.RegisterHandler<SwitcherooArmedMessage>(OnClientArmed);
                 NetworkClient.RegisterHandler<SwitcherooResultMessage>(OnClientResult);
+                NetworkClient.RegisterHandler<SwitcherooLockMessage>(OnClientLock);
                 clientHandlerRegistered = true;
                 Switcheroo.EnsureNetworkPrefabRegistered();
                 Plugin.Log.LogInfo("Registered Switcheroo client handlers.");
@@ -99,7 +117,28 @@ internal static class SwitcherooNetwork
         {
             clientHandlerRegistered = false;
             helloSent = false;
+            LockedThisRound = false;
         }
+
+        if (!holeHookInstalled)
+        {
+            CourseManager.CurrentHoleGlobalIndexChanged += OnHoleChanged;
+            holeHookInstalled = true;
+        }
+    }
+
+    /// <summary>A new hole is a new round, so the once-per-round allowance comes back.</summary>
+    private static void OnHoleChanged()
+    {
+        LockedThisRound = false;
+
+        if (!NetworkServer.active)
+        {
+            return;
+        }
+
+        serverLocked = false;
+        NetworkServer.SendToAll(new SwitcherooLockMessage { Locked = false });
     }
 
     /// <summary>Called on the client that used the item.</summary>
@@ -115,7 +154,12 @@ internal static class SwitcherooNetwork
     }
 
     private static void OnServerHello(NetworkConnectionToClient conn, SwitcherooHelloMessage message)
-        => ModGate.MarkModded(conn);
+    {
+        ModGate.MarkModded(conn);
+
+        // Bring a joining player up to date; they may have arrived after the swap was spent.
+        conn.Send(new SwitcherooLockMessage { Locked = serverLocked });
+    }
 
     private static void OnServerRequest(NetworkConnectionToClient conn, SwitcherooRequestMessage message)
     {
@@ -140,6 +184,14 @@ internal static class SwitcherooNetwork
             return;
         }
 
+        // The client checks this too and refuses without spending the item; this is the
+        // authoritative backstop.
+        if (serverLocked)
+        {
+            Plugin.Log.LogInfo("Switcheroo request ignored: already used this round.");
+            return;
+        }
+
         if (!SenderHoldsSwitcheroo(conn))
         {
             Plugin.Log.LogWarning(
@@ -147,10 +199,11 @@ internal static class SwitcherooNetwork
             return;
         }
 
-        ModRunner.Instance?.StartCoroutine(RunSwap());
+        PlayerInfo? initiator = conn.identity == null ? null : conn.identity.GetComponent<PlayerInfo>();
+        ModRunner.Instance?.StartCoroutine(RunSwap(initiator));
     }
 
-    private static IEnumerator RunSwap()
+    private static IEnumerator RunSwap(PlayerInfo? initiator)
     {
         swapPending = true;
 
@@ -166,15 +219,22 @@ internal static class SwitcherooNetwork
             yield break;
         }
 
-        int swapped = SwapService.TrySwap(out string failureReason);
-        if (swapped == 0)
+        List<PlayerGolfer> swapped = SwapService.TrySwap(out string failureReason);
+        if (swapped.Count == 0)
         {
             Plugin.Log.LogInfo($"Switcheroo used but no swap ran: {failureReason}.");
         }
         else
         {
-            Plugin.Log.LogInfo($"Switcheroo swapped {swapped} balls.");
-            NetworkServer.SendToAll(new SwitcherooResultMessage { SwappedCount = swapped });
+            Plugin.Log.LogInfo($"Switcheroo swapped {swapped.Count} balls.");
+            NetworkServer.SendToAll(new SwitcherooResultMessage { SwappedCount = swapped.Count });
+            AnnounceInFeed(initiator, swapped);
+
+            if (Plugin.OneSwitchPerRound.Value)
+            {
+                serverLocked = true;
+                NetworkServer.SendToAll(new SwitcherooLockMessage { Locked = true });
+            }
         }
 
         swapPending = false;
@@ -241,6 +301,39 @@ internal static class SwitcherooNetwork
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Reuses the game's own item-hit feed line, one per player caught in the swap, which is how
+    /// the game reports an item affecting several people at once.
+    /// </summary>
+    private static void AnnounceInFeed(PlayerInfo? initiator, List<PlayerGolfer> swapped)
+    {
+        if (initiator == null)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (PlayerGolfer golfer in swapped)
+            {
+                PlayerInfo affected = golfer.PlayerInfo;
+                if (affected != null && affected != initiator)
+                {
+                    InfoFeed.ShowItemHitMessage(initiator, affected, Switcheroo.Type);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"Could not post the swap to the info feed: {e.Message}");
+        }
+    }
+
+    private static void OnClientLock(SwitcherooLockMessage message)
+    {
+        LockedThisRound = message.Locked;
     }
 
     private static void OnClientArmed(SwitcherooArmedMessage message)

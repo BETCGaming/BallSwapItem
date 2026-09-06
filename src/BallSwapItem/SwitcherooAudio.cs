@@ -25,6 +25,27 @@ internal static class SwitcherooAudio
     public static void Load() => EnsureSound();
 
     /// <summary>
+    /// Plays the game's own "disabled" UI sound, quietly, when a use is refused. Created as an
+    /// instance rather than a one-shot because PlayOneShot offers no way to set a volume.
+    /// </summary>
+    public static void PlayDenial()
+    {
+        try
+        {
+            FMOD.Studio.EventInstance instance =
+                RuntimeManager.CreateInstance(GameManager.AudioSettings.CosmeticsButtonSelectDisabled);
+
+            instance.setVolume(Mathf.Clamp01(Plugin.DenialVolume.Value));
+            instance.start();
+            instance.release();
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"Could not play the denial sound: {e.Message}");
+        }
+    }
+
+    /// <summary>
     /// The wind-up cue, borrowed from the Orbital Laser the device is built from. Plays on every
     /// client so the whole lobby hears a swap coming, not just whoever used the item.
     /// </summary>
