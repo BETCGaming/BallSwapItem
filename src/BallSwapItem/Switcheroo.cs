@@ -19,7 +19,7 @@ internal static class Switcheroo
     public const string DisplayName = "Switcheroo";
 
     /// <summary>Hot pink #FF69B4, the agreed device colour.</summary>
-    private static readonly Color DeviceColor = new(1f, 105f / 255f, 180f / 255f, 1f);
+    internal static readonly Color DeviceColor = new(1f, 105f / 255f, 180f / 255f, 1f);
 
     private static ItemData? itemData;
     private static bool failedOnce;
@@ -129,7 +129,14 @@ internal static class Switcheroo
         prefab.name = "SwitcherooItem";
         UnityEngine.Object.DontDestroyOnLoad(prefab);
 
-        foreach (Renderer renderer in prefab.GetComponentsInChildren<Renderer>(includeInactive: true))
+        Recolour(prefab);
+        return prefab;
+    }
+
+    /// <summary>Tints every renderer on a cloned device hot pink.</summary>
+    internal static void Recolour(GameObject target)
+    {
+        foreach (Renderer renderer in target.GetComponentsInChildren<Renderer>(includeInactive: true))
         {
             foreach (Material material in renderer.materials)
             {
@@ -144,8 +151,6 @@ internal static class Switcheroo
                 }
             }
         }
-
-        return prefab;
     }
 
     private static Sprite? BuildIcon()
