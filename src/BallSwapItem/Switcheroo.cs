@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using HarmonyLib;
+using Mirror;
 using UnityEngine;
 
 namespace BallSwapItem;
@@ -21,8 +22,31 @@ internal static class Switcheroo
     /// <summary>Hot pink #FF69B4, the agreed device colour.</summary>
     internal static readonly Color DeviceColor = new(1f, 105f / 255f, 180f / 255f, 1f);
 
+    /// <summary>
+    /// Arbitrary but fixed, and far from the range Unity generates, so every player's client
+    /// agrees on which prefab this id means.
+    /// </summary>
+    private const uint NetworkAssetId = 0xB5A50001;
+
     private static ItemData? itemData;
     private static bool failedOnce;
+    private static GameObject? prefabHolder;
+
+    /// <summary>Deactivated parent that keeps runtime prefab templates out of the world.</summary>
+    private static GameObject PrefabHolder
+    {
+        get
+        {
+            if (prefabHolder == null)
+            {
+                prefabHolder = new GameObject("BallSwapItemPrefabs");
+                prefabHolder.SetActive(false);
+                UnityEngine.Object.DontDestroyOnLoad(prefabHolder);
+            }
+
+            return prefabHolder;
+        }
+    }
 
     /// <summary>
     /// Called after every <see cref="ItemCollection.Initialize"/>. Initialize() rebuilds its
@@ -127,10 +151,47 @@ internal static class Switcheroo
         }
 
         prefab.name = "SwitcherooItem";
-        UnityEngine.Object.DontDestroyOnLoad(prefab);
+
+        // A runtime template has to live in a scene, unlike a real prefab asset, so parking it
+        // under a deactivated holder is what keeps it dormant. Leaving the template itself
+        // inactive instead would make every dropped copy inherit activeSelf = false and spawn
+        // invisible, which is exactly what happened before.
+        prefab.transform.SetParent(PrefabHolder.transform, worldPositionStays: false);
+        prefab.SetActive(true);
 
         Recolour(prefab);
+        RegisterNetworkPrefab(prefab);
         return prefab;
+    }
+
+    /// <summary>
+    /// Dropped items are spawned across the network, and Mirror identifies the prefab to build
+    /// by asset id. The clone inherits the Orbital Laser's id, which would make every other
+    /// player's client build the game's own grey laser instead. Giving it a distinct id and
+    /// registering that on every peer means everyone sees the same pink device on the ground.
+    /// </summary>
+    private static void RegisterNetworkPrefab(GameObject prefab)
+    {
+        if (!prefab.TryGetComponent(out NetworkIdentity identity))
+        {
+            Plugin.Log.LogWarning("Switcheroo pickup has no NetworkIdentity; it will not spawn when dropped.");
+            return;
+        }
+
+        // RegisterPrefab refuses an id change when the prefab already carries one, and our clone
+        // inherited the Orbital Laser's. Mirror exposes assetId as read-only, so the backing
+        // field is cleared directly before handing Mirror the id we want.
+        FieldInfo? assetIdField = AccessTools.Field(typeof(NetworkIdentity), "_assetId");
+        if (assetIdField is null)
+        {
+            Plugin.Log.LogWarning("Mirror's assetId field was not found; dropped Switcheroos may appear as Orbital Lasers.");
+            return;
+        }
+
+        assetIdField.SetValue(identity, 0u);
+        NetworkClient.RegisterPrefab(prefab, NetworkAssetId);
+
+        Plugin.Log.LogInfo($"Registered the Switcheroo pickup as network asset {identity.assetId}.");
     }
 
     /// <summary>Tints every renderer on a cloned device hot pink.</summary>
