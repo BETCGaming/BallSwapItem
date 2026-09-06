@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using HarmonyLib;
 using UnityEngine;
@@ -36,6 +37,17 @@ internal static class SwitcherooUsePatch
         if (SwitcherooNetwork.LockedThisRound)
         {
             Refuse("ONCE PER ROUND");
+            __result = false;
+            return false;
+        }
+
+        // Someone else's swap is already counting down. A second one cannot do anything until
+        // the first lands, and the host would turn it down, so it is stopped here rather than
+        // being spent for nothing.
+        if (SwitcherooNetwork.SwapInProgress)
+        {
+            Trace.Log("use refused: a swap is already counting down");
+            Refuse("SWAP IN PROGRESS");
             __result = false;
             return false;
         }
@@ -96,6 +108,33 @@ internal static class SwitcherooUsePatch
         Trace.Log("routine: activation wait done, sending request");
         SwitcherooNetwork.RequestSwap();
 
+        // Nothing is spent until the host says the use is going ahead. Two players pressing
+        // within a network round-trip of each other both used to lose their Switcheroo here:
+        // the host could only honour the first, and never told the second.
+        for (float waited = 0f;
+             SwitcherooNetwork.RequestState == SwapRequestState.Waiting;
+             waited += Time.deltaTime)
+        {
+            if (waited >= SwitcherooNetwork.ReplyTimeoutSeconds)
+            {
+                SwitcherooNetwork.TimeOutRequest();
+                break;
+            }
+
+            yield return null;
+        }
+
+        if (SwitcherooNetwork.RequestState != SwapRequestState.Accepted)
+        {
+            // Keep the item: an unanswered use is far more likely to be a rule refusing it than
+            // a swap that silently went ahead.
+            Trace.Log($"routine: use denied ({SwitcherooNetwork.DenialText}), keeping the item");
+            Refuse(SwitcherooNetwork.DenialText);
+            inventory.SetCurrentItemUse(ItemUseType.None);
+            yield break;
+        }
+
+        Trace.Log("routine: host accepted, spending the item");
         int index = inventory.EquippedItemIndex;
         inventory.DecrementUseFromSlotAt(index);
 
@@ -109,9 +148,21 @@ internal static class SwitcherooUsePatch
         {
             if (!thrown && elapsed >= GameManager.ItemSettings.OrbitalLaserThrowTime)
             {
-                SwitcherooThrownItem.EnsureRegistered();
-                inventory.ThrowUsedItemForAllClients(SwitcherooThrownItem.Type);
-                inventory.LocalPlayerMarkThrownItem(PlayerInventory.ThrownItemHand.Right);
+                // The swap is already committed by this point and the toss is cosmetic, so a
+                // throw that fails must not abort the routine: everything after this loop is
+                // what clears the use state and removes the spent item. Letting an exception
+                // out here is what left the player mid-use with the Switcheroo still in hand.
+                try
+                {
+                    SwitcherooThrownItem.EnsureRegistered();
+                    inventory.ThrowUsedItemForAllClients(SwitcherooThrownItem.Type);
+                    inventory.LocalPlayerMarkThrownItem(PlayerInventory.ThrownItemHand.Right);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogError($"Could not throw the spent Switcheroo: {e}");
+                }
+
                 thrown = true;
                 Trace.Log($"routine: threw spent device at {elapsed:0.00}s");
             }

@@ -19,6 +19,13 @@ internal static class Switcheroo
 
     public const string DisplayName = "Switcheroo";
 
+    /// <summary>
+    /// The once-per-hole limit, as a match setup rule. Clear of the game's own Rule range
+    /// (Countdown..SmallTeamBoost, 0..30), and safe as a modded value because every rule lookup
+    /// is a dictionary keyed by Rule rather than an array indexed by it.
+    /// </summary>
+    public const MatchSetupRules.Rule OncePerHoleRule = (MatchSetupRules.Rule)200;
+
     /// <summary>Hot pink #FF69B4, the agreed device colour.</summary>
     internal static readonly Color DeviceColor = new(1f, 105f / 255f, 180f / 255f, 1f);
 
@@ -123,6 +130,12 @@ internal static class Switcheroo
         data.IsExplosive = false;
         data.CanBreakBreakableIce = false;
         data.CanHitProjectiles = false;
+
+        // The Orbital Laser reports its hits through its own blast icons rather than this field,
+        // so the donor leaves it None — and InfoFeed refuses to post a line for an item without
+        // one, which is why nobody could see who set a swap off. Borrowing the laser's icon keeps
+        // the feed line matching the device the Switcheroo is built from.
+        data.HitInfoFeedMessageIcon = InfoFeedIconType.OrbitalLaserCenter;
 
         // Null so LocalizedName resolves for our own key rather than inheriting "Orbital Laser".
         data.name = null;

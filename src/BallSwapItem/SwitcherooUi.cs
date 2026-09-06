@@ -23,14 +23,27 @@ internal static class SwitcherooUi
     /// <summary>Flashes per second while the refusal notice is showing.</summary>
     private const float DenialFlashHz = 4f;
 
+    /// <summary>Where the refusal notice sits when it has the screen to itself.</summary>
+    private const float DenialAloneY = -180f;
+
+    /// <summary>Where it drops to when a countdown is already using that space.</summary>
+    private const float DenialBelowCountdownY = -360f;
+
     private static TextMeshProUGUI? label;
+    private static TextMeshProUGUI? userLabel;
     private static TextMeshProUGUI? denialLabel;
     private static CanvasGroup? group;
     private static float countdownEndTime;
     private static float denialEndTime;
     private static string denialText = string.Empty;
+    private static string countdownUser = string.Empty;
 
-    public static void BeginCountdown(float seconds) => countdownEndTime = Time.time + seconds;
+    /// <summary>Shown on every client, so the whole lobby sees whose swap is coming.</summary>
+    public static void BeginCountdown(float seconds, string userName)
+    {
+        countdownEndTime = Time.time + seconds;
+        countdownUser = userName ?? string.Empty;
+    }
 
     /// <summary>Shown when a use is refused, explaining why.</summary>
     public static void ShowDenial(string message)
@@ -66,16 +79,29 @@ internal static class SwitcherooUi
         {
             label!.enabled = true;
             label.text = $"SWITCHEROO IN {Mathf.CeilToInt(countdownRemaining)}";
+
+            userLabel!.enabled = countdownUser.Length > 0;
+            if (userLabel.enabled)
+            {
+                userLabel.text = $"USED BY {countdownUser.ToUpperInvariant()}";
+            }
         }
         else
         {
             label!.enabled = false;
+            userLabel!.enabled = false;
         }
 
         if (denialRemaining > 0f)
         {
             denialLabel!.enabled = true;
             denialLabel.text = denialText;
+
+            // A refusal and a countdown now happen together — being turned down *because* a swap
+            // is running is the common case — so the notice steps out of the countdown's space.
+            denialLabel.rectTransform.anchoredPosition = new Vector2(
+                0f,
+                countdownRemaining > 0f ? DenialBelowCountdownY : DenialAloneY);
             // Square wave rather than a fade, so it reads as a flash rather than a pulse.
             bool on = Mathf.Repeat(denialRemaining * DenialFlashHz, 1f) > 0.5f;
             denialLabel.alpha = on ? 1f : 0.15f;
@@ -150,36 +176,52 @@ internal static class SwitcherooUi
         rect.anchoredPosition = new Vector2(0f, -180f);
         rect.sizeDelta = new Vector2(1400f, 120f);
 
-        denialLabel = BuildDenialLabel(root, font);
+        userLabel = BuildSecondaryLabel(root, font, "User", 40f, GradientBottom, -292f, 60f);
+        denialLabel = BuildSecondaryLabel(
+            root,
+            font,
+            "Denial",
+            58f,
+            new Color32(0xFF, 0x3B, 0x30, 0xFF),
+            DenialAloneY,
+            120f);
 
         Plugin.Log.LogInfo($"Countdown label built using the game font '{font.name}'.");
         return true;
     }
 
-    private static TextMeshProUGUI BuildDenialLabel(GameObject root, TMP_FontAsset font)
+    /// <summary>The plainer lines under the countdown: who used it, and why a use was refused.</summary>
+    private static TextMeshProUGUI BuildSecondaryLabel(
+        GameObject root,
+        TMP_FontAsset font,
+        string name,
+        float fontSize,
+        Color32 color,
+        float y,
+        float height)
     {
-        GameObject textObject = new("Denial");
+        GameObject textObject = new(name);
         textObject.transform.SetParent(root.transform, worldPositionStays: false);
 
-        TextMeshProUGUI denial = textObject.AddComponent<TextMeshProUGUI>();
-        denial.font = font;
-        denial.fontSize = 58f;
-        denial.alignment = TextAlignmentOptions.Center;
-        denial.textWrappingMode = TextWrappingModes.NoWrap;
-        denial.raycastTarget = false;
-        denial.color = new Color32(0xFF, 0x3B, 0x30, 0xFF);
-        denial.outlineWidth = 0.2f;
-        denial.outlineColor = new Color32(0, 0, 0, 255);
-        denial.enabled = false;
+        TextMeshProUGUI text = textObject.AddComponent<TextMeshProUGUI>();
+        text.font = font;
+        text.fontSize = fontSize;
+        text.alignment = TextAlignmentOptions.Center;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.raycastTarget = false;
+        text.color = color;
+        text.outlineWidth = 0.2f;
+        text.outlineColor = new Color32(0, 0, 0, 255);
+        text.enabled = false;
 
-        RectTransform rect = denial.rectTransform;
+        RectTransform rect = text.rectTransform;
         rect.anchorMin = new Vector2(0.5f, 1f);
         rect.anchorMax = new Vector2(0.5f, 1f);
         rect.pivot = new Vector2(0.5f, 1f);
-        rect.anchoredPosition = new Vector2(0f, -180f);
-        rect.sizeDelta = new Vector2(1400f, 120f);
+        rect.anchoredPosition = new Vector2(0f, y);
+        rect.sizeDelta = new Vector2(1400f, height);
 
-        return denial;
+        return text;
     }
 
     /// <summary>

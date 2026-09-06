@@ -12,8 +12,6 @@ public partial class Plugin : BaseUnityPlugin
 
     internal static ConfigEntry<bool> Enabled { get; private set; } = null!;
     internal static ConfigEntry<float> WindUpSeconds { get; private set; } = null!;
-    internal static ConfigEntry<float> SpawnChance { get; private set; } = null!;
-    internal static ConfigEntry<bool> OneSwitchPerRound { get; private set; } = null!;
     internal static ConfigEntry<bool> BlockUnmodded { get; private set; } = null!;
     internal static ConfigEntry<float> SoundVolume { get; private set; } = null!;
     internal static ConfigEntry<float> DenialVolume { get; private set; } = null!;
@@ -37,22 +35,6 @@ public partial class Plugin : BaseUnityPlugin
             new ConfigDescription(
                 "Seconds between using the Switcheroo and the swap landing.",
                 new AcceptableValueRange<float>(0f, 10f)));
-
-        SpawnChance = Config.Bind(
-            "General",
-            "SpawnChance",
-            0.07f,
-            new ConfigDescription(
-                "Chance that any item the game hands out is a Switcheroo, from item crates and "
-                + "catch-up hand-outs alike. Host setting; item spawning is server side.",
-                new AcceptableValueRange<float>(0f, 0.95f)));
-
-        OneSwitchPerRound = Config.Bind(
-            "Host",
-            "OneSwitchPerRound",
-            false,
-            "Allow only one Switcheroo swap per hole. Further attempts are refused without "
-            + "consuming the item. Host setting; clients follow whatever the host runs.");
 
         BlockUnmodded = Config.Bind(
             "Host",

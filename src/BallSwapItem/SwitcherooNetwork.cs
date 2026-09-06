@@ -6,9 +6,20 @@ using UnityEngine;
 
 namespace BallSwapItem;
 
+/// <summary>Where a use that has been sent to the host stands, from the using client's side.</summary>
+internal enum SwapRequestState
+{
+    None,
+    Waiting,
+    Accepted,
+    Denied,
+}
+
 /// <summary>Client to server: "I used a Switcheroo."</summary>
 internal struct SwitcherooRequestMessage : NetworkMessage
 {
+    /// <summary>Echoed back in the reply, so a late answer cannot be read as the next use's.</summary>
+    public uint Token;
 }
 
 /// <summary>Client to server on connect: "I have the mod installed."</summary>
@@ -20,6 +31,33 @@ internal struct SwitcherooHelloMessage : NetworkMessage
 internal struct SwitcherooArmedMessage : NetworkMessage
 {
     public float WindUpSeconds;
+
+    /// <summary>Who set it off, so every player's countdown can say so. Empty if unknown.</summary>
+    public string UserName;
+}
+
+/// <summary>Why the host turned a use down, so the client can say which rule stopped it.</summary>
+internal enum SwitcherooDenialReason : byte
+{
+    None,
+    SwapInProgress,
+    AlreadyUsedThisRound,
+    NotHolding,
+    TooSoon,
+    NotEnoughBalls,
+}
+
+/// <summary>
+/// Server to the one client that asked: whether the use is going ahead.
+///
+/// The item is not spent until this says yes. Without it a use that the host turns down still
+/// cost the player their Switcheroo, with nothing on screen to say why.
+/// </summary>
+internal struct SwitcherooUseReplyMessage : NetworkMessage
+{
+    public bool Accepted;
+    public byte Reason;
+    public uint Token;
 }
 
 /// <summary>Server to every client: the swap landed, play the payoff.</summary>
@@ -52,8 +90,34 @@ internal static class SwitcherooNetwork
 
     private static readonly Dictionary<int, double> LastRequestPerConnection = new();
 
+    /// <summary>
+    /// How long after the wind-up a client keeps treating a swap as running. The host sends no
+    /// result when a swap ends up swapping nothing, so the busy state expires on its own rather
+    /// than relying on a message that may never come.
+    /// </summary>
+    private const float BusyGraceSeconds = 1.5f;
+
+    /// <summary>How long a client waits for the host's verdict before giving up on a use.</summary>
+    public const float ReplyTimeoutSeconds = 2f;
+
     /// <summary>Set on clients from the host. False whenever the rule is off.</summary>
     public static bool LockedThisRound { get; private set; }
+
+    /// <summary>
+    /// True on every client from the moment a swap is armed until it lands. A second Switcheroo
+    /// used inside that window cannot do anything — the host refuses it — so the use is stopped
+    /// here, before it costs anyone their item.
+    /// </summary>
+    public static bool SwapInProgress => Time.timeAsDouble < clientBusyUntil;
+
+    /// <summary>Where a use that has been sent to the host currently stands.</summary>
+    public static SwapRequestState RequestState { get; private set; } = SwapRequestState.None;
+
+    /// <summary>Set alongside a denied <see cref="RequestState"/>, ready to show to the player.</summary>
+    public static string DenialText { get; private set; } = "SWAP UNAVAILABLE";
+
+    private static double clientBusyUntil;
+    private static uint pendingToken;
 
     private static bool serverLocked;
     private static bool holeHookInstalled;
@@ -100,6 +164,7 @@ internal static class SwitcherooNetwork
                 NetworkClient.RegisterHandler<SwitcherooArmedMessage>(OnClientArmed);
                 NetworkClient.RegisterHandler<SwitcherooResultMessage>(OnClientResult);
                 NetworkClient.RegisterHandler<SwitcherooLockMessage>(OnClientLock);
+                NetworkClient.RegisterHandler<SwitcherooUseReplyMessage>(OnClientUseReply);
                 clientHandlerRegistered = true;
                 Switcheroo.EnsureNetworkPrefabRegistered();
                 Plugin.Log.LogInfo("Registered Switcheroo client handlers.");
@@ -118,6 +183,8 @@ internal static class SwitcherooNetwork
             clientHandlerRegistered = false;
             helloSent = false;
             LockedThisRound = false;
+            clientBusyUntil = 0;
+            RequestState = SwapRequestState.None;
         }
 
         if (!holeHookInstalled)
@@ -141,16 +208,60 @@ internal static class SwitcherooNetwork
         NetworkServer.SendToAll(new SwitcherooLockMessage { Locked = false });
     }
 
-    /// <summary>Called on the client that used the item.</summary>
+    /// <summary>
+    /// Called on the client that used the item. The caller then waits on
+    /// <see cref="RequestState"/> and only spends the Switcheroo once the host has accepted.
+    /// </summary>
     public static void RequestSwap()
     {
         if (!NetworkClient.active)
         {
             Plugin.Log.LogWarning("Switcheroo used while not connected; ignoring.");
+            RequestState = SwapRequestState.Denied;
+            DenialText = "NOT CONNECTED";
             return;
         }
 
-        NetworkClient.Send(new SwitcherooRequestMessage());
+        RequestState = SwapRequestState.Waiting;
+        pendingToken++;
+        NetworkClient.Send(new SwitcherooRequestMessage { Token = pendingToken });
+    }
+
+    /// <summary>Ends the wait when the host says nothing at all, so the item is kept.</summary>
+    public static void TimeOutRequest()
+    {
+        RequestState = SwapRequestState.Denied;
+        DenialText = "NO RESPONSE";
+    }
+
+    private static void OnClientUseReply(SwitcherooUseReplyMessage message)
+    {
+        // An answer to a use we have already given up on, arriving while a newer one is in
+        // flight, must not be mistaken for the newer one's verdict.
+        if (message.Token != pendingToken || RequestState != SwapRequestState.Waiting)
+        {
+            return;
+        }
+
+        if (message.Accepted)
+        {
+            RequestState = SwapRequestState.Accepted;
+            return;
+        }
+
+        SwitcherooDenialReason reason = (SwitcherooDenialReason)message.Reason;
+        RequestState = SwapRequestState.Denied;
+        DenialText = reason switch
+        {
+            SwitcherooDenialReason.SwapInProgress => "SWAP IN PROGRESS",
+            SwitcherooDenialReason.AlreadyUsedThisRound => "ONCE PER ROUND",
+            SwitcherooDenialReason.NotEnoughBalls => "NO BALLS TO SWAP",
+            SwitcherooDenialReason.NotHolding => "NO SWITCHEROO",
+            SwitcherooDenialReason.TooSoon => "TOO SOON",
+            _ => "SWAP UNAVAILABLE",
+        };
+
+        Trace.Log($"client: use denied by the host ({reason})");
     }
 
     private static void OnServerHello(NetworkConnectionToClient conn, SwitcherooHelloMessage message)
@@ -173,6 +284,7 @@ internal static class SwitcherooNetwork
             && now - last < MinSecondsBetweenRequests)
         {
             Plugin.Log.LogWarning($"Ignoring rapid Switcheroo request from connection {conn.connectionId}.");
+            Deny(conn, message.Token, SwitcherooDenialReason.TooSoon);
             return;
         }
 
@@ -181,6 +293,7 @@ internal static class SwitcherooNetwork
         if (swapPending)
         {
             Plugin.Log.LogInfo("Switcheroo request ignored: a swap is already counting down.");
+            Deny(conn, message.Token, SwitcherooDenialReason.SwapInProgress);
             return;
         }
 
@@ -189,6 +302,7 @@ internal static class SwitcherooNetwork
         if (serverLocked)
         {
             Plugin.Log.LogInfo("Switcheroo request ignored: already used this round.");
+            Deny(conn, message.Token, SwitcherooDenialReason.AlreadyUsedThisRound);
             return;
         }
 
@@ -196,29 +310,48 @@ internal static class SwitcherooNetwork
         {
             Plugin.Log.LogWarning(
                 $"Ignoring Switcheroo request from connection {conn.connectionId}: no Switcheroo in their inventory.");
+            Deny(conn, message.Token, SwitcherooDenialReason.NotHolding);
+            return;
+        }
+
+        // Decided here rather than once the countdown coroutine is running: acceptance is what
+        // spends the requester's item, so everything that can refuse has to have refused by now.
+        int eligible = SwapService.CountEligible();
+        if (eligible < 2)
+        {
+            Plugin.Log.LogInfo($"Switcheroo request refused: only {eligible} eligible ball(s) in play.");
+            Deny(conn, message.Token, SwitcherooDenialReason.NotEnoughBalls);
             return;
         }
 
         PlayerInfo? initiator = conn.identity == null ? null : conn.identity.GetComponent<PlayerInfo>();
         Trace.Log($"server: request accepted from connection {conn.connectionId}");
+        conn.Send(new SwitcherooUseReplyMessage
+        {
+            Accepted = true,
+            Reason = (byte)SwitcherooDenialReason.None,
+            Token = message.Token,
+        });
         ModRunner.Instance?.StartCoroutine(RunSwap(initiator));
+    }
+
+    private static void Deny(NetworkConnectionToClient conn, uint token, SwitcherooDenialReason reason)
+    {
+        conn.Send(new SwitcherooUseReplyMessage { Accepted = false, Reason = (byte)reason, Token = token });
     }
 
     private static IEnumerator RunSwap(PlayerInfo? initiator)
     {
+        // Eligibility was settled in OnServerRequest, before the use was accepted, so a countdown
+        // never starts for a swap that cannot happen.
         swapPending = true;
 
-        // Check before arming: a countdown for a swap that cannot happen is worse than none.
-        int eligible = SwapService.CountEligible();
-        if (eligible < 2)
-        {
-            Plugin.Log.LogInfo($"Switcheroo request refused: only {eligible} eligible ball(s) in play.");
-            swapPending = false;
-            yield break;
-        }
-
         float windUp = Mathf.Max(0f, Plugin.WindUpSeconds.Value);
-        NetworkServer.SendToAll(new SwitcherooArmedMessage { WindUpSeconds = windUp });
+        NetworkServer.SendToAll(new SwitcherooArmedMessage
+        {
+            WindUpSeconds = windUp,
+            UserName = NameOf(initiator),
+        });
 
         Trace.Log($"server: armed, waiting {windUp:0.0}s");
         yield return new WaitForSeconds(windUp);
@@ -243,7 +376,9 @@ internal static class SwitcherooNetwork
             NetworkServer.SendToAll(new SwitcherooResultMessage { SwappedCount = swapped.Count });
             AnnounceInFeed(initiator, swapped);
 
-            if (Plugin.OneSwitchPerRound.Value)
+            // Host-authoritative and set in the match setup. GetValueAsBool falls back to the
+            // rule's default when there is no setup screen, which is off.
+            if (MatchSetupRules.GetValueAsBool(Switcheroo.OncePerHoleRule))
             {
                 serverLocked = true;
                 NetworkServer.SendToAll(new SwitcherooLockMessage { Locked = true });
@@ -317,8 +452,25 @@ internal static class SwitcherooNetwork
     }
 
     /// <summary>
+    /// The name to show for whoever set a swap off. Taken without rich text: a player's name is
+    /// theirs to choose, and our countdown label would otherwise render their markup.
+    /// </summary>
+    private static string NameOf(PlayerInfo? player)
+    {
+        if (player == null)
+        {
+            return string.Empty;
+        }
+
+        PlayerId? id = player.PlayerId;
+        return id == null ? string.Empty : id.PlayerNameNoRichText ?? string.Empty;
+    }
+
+    /// <summary>
     /// Reuses the game's own item-hit feed line, one per player caught in the swap, which is how
-    /// the game reports an item affecting several people at once.
+    /// the game reports an item affecting several people at once. The line is posted by the
+    /// server and the game shows it on every client, so this is what tells the rest of the lobby
+    /// who used the Switcheroo.
     /// </summary>
     private static void AnnounceInFeed(PlayerInfo? initiator, List<PlayerGolfer> swapped)
     {
@@ -351,12 +503,14 @@ internal static class SwitcherooNetwork
 
     private static void OnClientArmed(SwitcherooArmedMessage message)
     {
-        SwitcherooUi.BeginCountdown(message.WindUpSeconds);
+        clientBusyUntil = Time.timeAsDouble + message.WindUpSeconds + BusyGraceSeconds;
+        SwitcherooUi.BeginCountdown(message.WindUpSeconds, message.UserName);
         SwitcherooAudio.PlayAnticipation();
     }
 
     private static void OnClientResult(SwitcherooResultMessage message)
     {
+        clientBusyUntil = 0;
         Plugin.Log.LogInfo($"Switcheroo swapped {message.SwappedCount} balls.");
         SwitcherooAudio.PlayPayoff();
     }

@@ -1,4 +1,5 @@
 using System;
+using HarmonyLib;
 using UnityEngine;
 
 namespace BallSwapItem;
@@ -84,5 +85,86 @@ internal static class SwitcherooThrownItem
             failedOnce = true;
             Plugin.Log.LogError($"Could not register the discarded Switcheroo: {e}");
         }
+    }
+}
+
+/// <summary>
+/// Lets the game throw our discarded device at all.
+///
+/// ThrowUsedItemInternal opens with a switch over <see cref="ThrownUsedItemType"/> that picks the
+/// hand, the throw rotation, the angular velocity and the speed, and its default arm throws
+/// SwitchExpressionException. Our type landed there, so the throw died before ever reaching
+/// GetUnusedThrownItem — the lookup <see cref="SwitcherooThrownItem"/> feeds — and took the
+/// calling coroutine down with it, leaving the spent item in the slot and the player stuck in a
+/// use that never finished.
+///
+/// So we handle our own type and let every other item run the original. This has to work on
+/// every client rather than only the thrower, which it does: the receiving end of
+/// RpcThrowUsedItem funnels into this same method.
+/// </summary>
+[HarmonyPatch(typeof(PlayerInventory), "ThrowUsedItemInternal")]
+internal static class ThrowUsedItemPatch
+{
+    private static bool Prefix(
+        PlayerInventory __instance,
+        ThrownUsedItemType thrownItemType,
+        bool forcePlayerPosition,
+        Vector3 forcedPlayerPosition)
+    {
+        if (thrownItemType != SwitcherooThrownItem.Type)
+        {
+            return true;
+        }
+
+        try
+        {
+            SwitcherooThrownItem.EnsureRegistered();
+            Throw(__instance, forcePlayerPosition, forcedPlayerPosition);
+        }
+        catch (Exception e)
+        {
+            Plugin.Log.LogWarning($"Could not throw the spent Switcheroo: {e.Message}");
+        }
+
+        // Never fall through: the original holds nothing for our type but the exception.
+        return false;
+    }
+
+    /// <summary>
+    /// The Orbital Laser's arm of the game's switch, followed by the shared tail of
+    /// ThrowUsedItemInternal. The spring boot and rocket driver special cases in that tail are
+    /// left out because neither can apply to our type.
+    /// </summary>
+    private static void Throw(PlayerInventory inventory, bool forcePlayerPosition, Vector3 forcedPlayerPosition)
+    {
+        ThrownUsedItem device = ThrownUsedItemManager.GetUnusedThrownItem(SwitcherooThrownItem.Type);
+        if (device == null)
+        {
+            // GetUnusedThrownItem logs its own error. Losing the discarded model is cosmetic;
+            // what matters is that the caller's use routine still runs to the end.
+            return;
+        }
+
+        PlayerInfo player = inventory.PlayerInfo;
+        Quaternion throwRotation = GameManager.ItemSettings.OrbitalLaserThrowDirectionLocalRotation;
+        Vector3 localAngularVelocity = GameManager.ItemSettings.OrbitalLaserThrowLocalAngularVelocity;
+
+        player.RightHandEquipmentSwitcher.transform.GetPositionAndRotation(
+            out Vector3 position,
+            out Quaternion rotation);
+
+        if (forcePlayerPosition)
+        {
+            position += forcedPlayerPosition - inventory.transform.position;
+        }
+
+        Vector3 direction = inventory.transform.TransformDirection(throwRotation * Vector3.forward);
+        Vector3 spin = inventory.transform.TransformDirection(throwRotation * localAngularVelocity);
+        Vector3 velocity = player.Rigidbody.linearVelocity
+            + direction * GameManager.ItemSettings.OrbitalLaserThrowSpeed;
+        Vector3 angularVelocity = player.Rigidbody.angularVelocity + spin;
+
+        device.Initialize(position, rotation, velocity, angularVelocity, player.GetEffectiveTeam());
+        PhysicsManager.TemporarilyIgnoreCollisionsBetween(player.AsEntity, device.AsEntity, 0.5f);
     }
 }

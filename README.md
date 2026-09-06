@@ -35,6 +35,15 @@ changes data the host and clients agree on, so an unmodded player cannot take pa
 | `SoundVolume` | `0.8` | Volume of the sting played once a swap resolves. |
 | `DebugHotkeys` | `false` | Host-only testing keys: F9 grants a Switcheroo, F10 forces a swap. |
 
+Whether a hole allows more than one swap is **not** a config setting either. It is an on/off row
+called **One Switcheroo per hole** in the match setup's Battle section, off by default, set by the
+host per match.
+
+How often the Switcheroo spawns is **not** a config setting. It has its own slider in the match
+setup's item probabilities, alongside the game's own items, and the host sets it per match. It
+ships at the same rarity as the Orbital Laser and the Thunderstorm, and appears in every pool
+except mobility.
+
 [ModConfig](https://thunderstore.io/c/super-battle-golf/p/AtomicStudio/ModConfig/) is supported
 for editing these in-game; no extra setup is needed.
 

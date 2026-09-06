@@ -1,5 +1,88 @@
 # Changelog
 
+## 0.4.0
+
+Not published; a test build.
+
+### Added
+
+- The once-per-hole limit is now a **One Switcheroo per hole** row in the match setup's Battle
+  section, set by the host per match and visible to everyone in the lobby. It is off by default,
+  flips the preset to Custom like any rule, and the game's presets reset it to off because they do
+  not list it.
+
+### Changed
+
+- **Removed the `OneSwitchPerRound` config key.** The Battle row replaces it. A leftover key in an
+  existing config file is ignored.
+
+## 0.3.0
+
+Not published; a test build.
+
+### Added
+
+- The Switcheroo has its own item-probability slider in the match setup, alongside the game's own
+  items, and that slider is now what decides how often it spawns. It appears in the ahead-of-ball
+  pool and the four crate pools, and ships at the same rarity as the Orbital Laser and the
+  Thunderstorm — read from each pool at runtime, so a rebalance in a game update carries the
+  Switcheroo with it. Mobility pools are left alone, so the slider is greyed out on that tab the
+  way any item missing from a pool is.
+
+### Changed
+
+- The item is now in the game's item pools and drawn by the game's own weighted pick, rather than
+  being substituted in as items were drawn.
+- **Removed the `SpawnChance` config key.** The match setup slider replaces it. A leftover key in
+  an existing config file is ignored.
+- Installing the mod resets a saved match setup's spawn chances once, because the item pools it
+  was saved against no longer match. Removing the mod later resets them once more.
+
+### Fixed
+
+- The lobby's rules screen can hold a modded item at all. It maps each item to its slider through
+  an array the game fills in an editor-only callback, sized to its own item list, which is what
+  threw on the Switcheroo and forced the item out of the pools in 0.1.7.
+
+## 0.2.1
+
+Not published; a test build.
+
+### Added
+
+- Everyone can now see who used the Switcheroo. The countdown names them on every player's screen,
+  and the swap posts a line per affected player in the game's own info feed.
+- A swap already counting down now blocks any further Switcheroo use until it lands. The press is
+  refused with flashing "SWAP IN PROGRESS" text and the denial sound, and the item is kept.
+
+### Fixed
+
+- A Switcheroo used during another player's countdown is no longer consumed for nothing. The item
+  is now spent only once the host has accepted the use, and every refusal the host makes is sent
+  back to that player and shown on screen, rather than the host dropping the request in silence.
+- The host settles whether enough balls are in play before accepting a use rather than after, so
+  an accepted use can no longer turn out to have nothing to swap.
+- The Switcheroo has an info feed icon, so the game will post its feed line at all. Without one
+  InfoFeed refused the line and logged an error on every single swap, which is why no one could
+  see who had used it.
+- The refusal notice steps below the countdown while one is running, rather than being drawn on
+  top of it.
+
+## 0.2.0
+
+Not published; a test build.
+
+### Fixed
+
+- Using the Switcheroo no longer aborts partway through. The game's ThrowUsedItemInternal picks a
+  throw's hand, rotation, spin and speed from a switch whose default arm throws, so our thrown
+  type never reached the prefab lookup it was registered in. The exception killed the use routine
+  before it could clear the use state or remove the spent item, which left the player mid-use
+  holding a Switcheroo they could fire again — the repeating use-and-discard. Our own type is now
+  handled with the Orbital Laser's throw settings, on every client rather than just the thrower.
+- A throw that fails for any other reason no longer strands the player: the toss is cosmetic and
+  the swap is already committed by then, so the routine finishes and cleans up regardless.
+
 ## 0.1.9
 
 Not published; a test build.

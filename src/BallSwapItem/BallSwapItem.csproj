@@ -7,7 +7,7 @@
     <!-- This is the display name of your mod. Example: BepInEx Template -->
     <AssemblyTitle>BallSwapItem</AssemblyTitle>
     <!-- This is the version number of your mod. -->
-    <Version>0.1.9</Version>
+    <Version>0.4.0</Version>
   </PropertyGroup>
 
   <!-- Assets shipped inside the DLL so the plugin is a single self-contained file -->

@@ -3,7 +3,7 @@
 What is left to get this from a local test build onto Thunderstore. Everything here is
 outstanding; the build, packaging and Thunderstore metadata are already working.
 
-Current state: **17 commits on `main`, nothing pushed**, version **0.1.9**, never published.
+Current state: **nothing pushed**, version **0.4.0**, never published.
 
 ## Before publishing
 
@@ -19,14 +19,16 @@ so far only appeared on the *other* player's screen:
 - Held device orientation on the second player's screen.
 - The discarded device being hot pink for both players, not just the thrower.
 - The lobby's item-probability tab opening cleanly.
-- Whether the repeating use-and-discard recurs.
+- Whether the repeating use-and-discard recurs. Diagnosed and fixed in 0.2.0 — the throw hit a
+  switch in the game that threw on our type and killed the use routine before it could clear the
+  use state — but the fix has not been confirmed in play yet.
 
 ### 2. Decide the version number
 
-`0.1.9` is a test-build number and the changelog marks every entry "Not published". For a first
-public release, decide whether it ships as `0.1.9`, `0.2.0`, or `1.0.0`, then:
+`0.4.0` is set in `src/BallSwapItem/BallSwapItem.csproj`, but the changelog still marks every
+entry "Not published". Decide whether the first public release ships as `0.4.0` or `1.0.0`, then:
 
-- set `<Version>` in `src/BallSwapItem/BallSwapItem.csproj`
+- set `<Version>` in `src/BallSwapItem/BallSwapItem.csproj` if the number changes
 - retitle the top changelog section and drop the "Not published" line
 
 ### 3. Settle the accepted caveats
@@ -40,8 +42,6 @@ after people have installed the mod:
   re-checking after each game patch.
 - **A kicked unmodded player sees a generic disconnect**, not a message naming the mod. Mirror
   gives no way to send a reason to a client that cannot read our messages.
-- **The item has no slider in the lobby's rules screen.** That UI is built from a fixed item list,
-  so its spawn rate is set through config instead.
 
 ## Step 1 — GitHub
 
@@ -94,13 +94,13 @@ publishing:
 ```powershell
 # Inspect what is actually in the package
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "artifacts\thunderstore\BETCGaming-BallSwapItem-0.1.9.zip"))
+$zip = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path "artifacts\thunderstore\BETCGaming-BallSwapItem-0.4.0.zip"))
 $zip.Entries | Select-Object FullName, Length
 $zip.Dispose()
 ```
 
 **The shipped defaults are already correct** and are not affected by your local testing settings:
-`SpawnChance` 0.07, `OneSwitchPerRound` false, `BlockUnmodded` true, `DebugHotkeys` false,
+`BlockUnmodded` true, `DebugHotkeys` false,
 `VerboseLogging` false. The config file lives in the game folder, is generated at runtime, and is
 not part of the repository or the package — so no reset is needed for the release. See
 [Local test settings](#local-test-settings) for your own machine.
@@ -112,7 +112,7 @@ publishing:
 
 ```powershell
 dotnet tcli publish `
-  --file artifacts\thunderstore\BETCGaming-BallSwapItem-0.1.9.zip `
+  --file artifacts\thunderstore\BETCGaming-BallSwapItem-0.4.0.zip `
   --token $env:TCLI_TOKEN
 ```
 
@@ -128,8 +128,8 @@ explicit command above is the reliable one.
 - [ ] Tag the release so the source matches what shipped:
 
 ```sh
-git tag -a v0.1.9 -m "First Thunderstore release"
-git push origin v0.1.9
+git tag -a v0.4.0 -m "First Thunderstore release"
+git push origin v0.4.0
 ```
 
 - [ ] Tell the people who have been testing with a local zip to switch to the Thunderstore
@@ -151,10 +151,12 @@ Your machine's config still has testing values, in
 
 | Key | Testing | Normal play |
 |---|---|---|
-| `SpawnChance` | 0.8 | 0.07 |
-| `OneSwitchPerRound` | true | false |
 | `DebugHotkeys` | true | false |
 | `VerboseLogging` | true | false |
+
+`SpawnChance` was removed in 0.3.0 and `OneSwitchPerRound` in 0.4.0 — spawn rate is now the match
+setup slider, and the once-per-hole limit a Battle row. Old keys left in the file are ignored, so
+there is nothing to clean up.
 
 These affect only this machine. Leave `VerboseLogging` on until the repeating use-and-discard has
 clearly stopped happening — it only writes while the item is being used, and it is the only thing
