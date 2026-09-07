@@ -135,8 +135,10 @@ internal static class SwitcherooPool
             return Mathf.Max(laser, storm);
         }
 
-        // Neither is in this pool. Fall back to the rarest thing it does have, and say so: a game
-        // update that moves those items around is worth noticing rather than silently absorbing.
+        // Neither is in this pool, which is the normal state of affairs for the close and
+        // ahead-of-ball pools: they draw from a different set of items. Fall back to the rarest
+        // thing the pool does have, and record which weight was used — worth being able to look
+        // up after a game update, but not worth a warning for something expected.
         float rarest = 0f;
         foreach (ItemPool.ItemSpawnChance chance in pool.SpawnChances)
         {
@@ -153,7 +155,7 @@ internal static class SwitcherooPool
 
         if (warnIfMissing)
         {
-            Plugin.Log.LogWarning(
+            Plugin.Log.LogInfo(
                 $"Pool '{pool.name}' has neither the Orbital Laser nor the Thunderstorm; "
                 + $"ranking the Switcheroo against its rarest item at weight {rarest:0.###}.");
         }

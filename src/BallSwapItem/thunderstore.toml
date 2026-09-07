@@ -41,4 +41,4 @@ communities = [ "super-battle-golf", ]
 [publish.categories]
 # See categories at:
 # https://thunderstore.io/api/experimental/community/super-battle-golf/category/
-super-battle-golf = [ "mods", ]
+super-battle-golf = [ "mods", "allclients", "items", ]

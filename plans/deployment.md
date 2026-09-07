@@ -3,8 +3,13 @@
 How this got from a local test build onto Thunderstore, kept as the procedure for the next
 release rather than a to-do list.
 
-Current state: **published as 1.0.0** on 2026-09-06 and tagged `v1.0.0`; `main` is pushed. See
+Current state: **published as 1.0.1** on 2026-09-06 and tagged `v1.0.1`; `main` is pushed. See
 [Publishing an update later](#publishing-an-update-later) for the next one.
+
+Thunderstore categories live in `[publish.categories]` in `src/BallSwapItem/thunderstore.toml` and
+are applied at publish time. They are a property of the listing rather than a version, so they can
+also be changed on the package page without burning a version number. Slugs for this community are
+listed at <https://thunderstore.io/api/experimental/community/super-battle-golf/category/>.
 
 ## Before publishing
 

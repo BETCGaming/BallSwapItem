@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.1
+
+### Changed
+
+- Listed on Thunderstore under **All Clients Required** and **Items**, so the page says up front
+  that every player in the lobby needs the mod.
+- The credits name BallSwap as the inspiration for this mod.
+- A pool with neither the Orbital Laser nor the Thunderstorm to rank against is logged as
+  information rather than a warning. It is the normal state of the close and ahead-of-ball pools,
+  so the warning fired on every lobby entry for something entirely expected.
+
 ## 1.0.0
 
 First public release. The sections below it are the pre-release test builds it was built from.
