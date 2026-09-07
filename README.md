@@ -28,12 +28,12 @@ changes data the host and clients agree on, so an unmodded player cannot take pa
 
 ## Configuration
 
-| Key | Default | Description |
-|---|---|---|
-| `Enabled` | `true` | Registers the item. With this off the Switcheroo never appears. |
-| `WindUpSeconds` | `3` | Delay between using the item and the swap landing. |
-| `SoundVolume` | `0.8` | Volume of the sting played once a swap resolves. |
-| `DebugHotkeys` | `false` | Host-only testing keys: F9 grants a Switcheroo, F10 forces a swap. |
+| Key             | Default | Description                                                        |
+| --------------- | ------- | ------------------------------------------------------------------ |
+| `Enabled`       | `true`  | Registers the item. With this off the Switcheroo never appears.    |
+| `WindUpSeconds` | `3`     | Delay between using the item and the swap landing.                 |
+| `SoundVolume`   | `0.8`   | Volume of the sting played once a swap resolves.                   |
+| `DebugHotkeys`  | `false` | Host-only testing keys: F9 grants a Switcheroo, F10 forces a swap. |
 
 Whether a hole allows more than one swap is **not** a config setting either. It is an on/off row
 called **One Switcheroo per hole** in the match setup's Battle section, off by default, set by the
@@ -62,4 +62,4 @@ default Steam path; with it in place, builds deploy straight into the game's `Be
 ## Credits
 
 Not affiliated with [BallSwap](https://thunderstore.io/c/super-battle-golf/p/exiira/BallSwap/)
-by exiira, which swaps balls on a timer rather than through an item.
+by exiira, which swaps balls on a timer rather than through an item. The BallSwap mod did inspire us greatly to make this mod.
